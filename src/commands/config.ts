@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import pc from 'picocolors';
 
-import { DEFAULT_PROFILE, loadConfig, saveConfig, type Profile } from '../lib/config.js';
+import { DEFAULT_CLIENT_ID, loadConfig, saveConfig, type Profile } from '../lib/config.js';
 import { runAction } from '../lib/context.js';
 import { printJson, renderTable } from '../lib/output.js';
 
@@ -83,21 +83,36 @@ export function registerConfigCommands(program: Command): void {
 
   config
     .command('add-profile <name>')
-    .description('Create a new profile (defaults copied from the built-in prod profile)')
-    .option('--api-url <url>', 'Lifecycle API base URL')
+    .description('Create a new profile pointing at a Lifecycle deployment')
+    .requiredOption('--api-url <url>', 'Lifecycle API base URL')
+    .option('--ui-url <url>', 'Lifecycle UI base URL (for `lfc builds open`)')
+    .option('--issuer <url>', 'Keycloak realm issuer URL (e.g. https://auth.example.com/realms/lifecycle)')
+    .option('--client-id <id>', 'Keycloak public client id', DEFAULT_CLIENT_ID)
     .option('--no-auth', 'disable SSO auth for this profile (for auth-less deployments)')
     .action(
-      runAction(async (ctx, name: string, opts: { apiUrl?: string; auth?: boolean }) => {
-        const cfg = loadConfig();
-        if (cfg.profiles[name]) throw new Error(`Profile "${name}" already exists`);
-        cfg.profiles[name] = {
-          ...DEFAULT_PROFILE,
-          ...(opts.apiUrl ? { apiUrl: opts.apiUrl } : {}),
-          authEnabled: opts.auth !== false,
-        };
-        saveConfig(cfg);
-        process.stderr.write(`${pc.green('✓')} Created profile "${name}" — switch with \`lfc config use-profile ${name}\`\n`);
-      })
+      runAction(
+        async (
+          _ctx,
+          name: string,
+          opts: { apiUrl: string; uiUrl?: string; issuer?: string; clientId: string; auth?: boolean }
+        ) => {
+          const cfg = loadConfig();
+          if (cfg.profiles[name]) throw new Error(`Profile "${name}" already exists`);
+          const authEnabled = opts.auth !== false;
+          if (authEnabled && !opts.issuer) {
+            throw new Error('Auth is enabled but no --issuer given — pass --issuer <url> or use --no-auth');
+          }
+          cfg.profiles[name] = {
+            apiUrl: opts.apiUrl,
+            ...(opts.uiUrl ? { uiUrl: opts.uiUrl } : {}),
+            authEnabled,
+            ...(authEnabled ? { keycloak: { issuer: opts.issuer!, clientId: opts.clientId } } : {}),
+          };
+          if (Object.keys(cfg.profiles).length === 1) cfg.currentProfile = name;
+          saveConfig(cfg);
+          process.stderr.write(`${pc.green('✓')} Created profile "${name}" — switch with \`lfc config use-profile ${name}\`\n`);
+        }
+      )
     );
 
   config

@@ -21,15 +21,8 @@ export interface ConfigFile {
 
 export const DEFAULT_PROFILE_NAME = 'default';
 
-export const DEFAULT_PROFILE: Profile = {
-  apiUrl: 'https://app.lifecycle.lfc.goodrx.com',
-  uiUrl: 'https://ui.lifecycle.lfc.goodrx.com',
-  authEnabled: true,
-  keycloak: {
-    issuer: 'https://auth.lifecycle.lfc.goodrx.com/realms/lifecycle',
-    clientId: 'lifecycle-cli',
-  },
-};
+/** Conventional Keycloak client id for Lifecycle deployments; overridable per profile. */
+export const DEFAULT_CLIENT_ID = 'lifecycle-cli';
 
 export function configDir(): string {
   return process.env.LFC_CONFIG_DIR || path.join(os.homedir(), '.config', 'lifecycle-cli');
@@ -47,15 +40,10 @@ export function loadConfig(): ConfigFile {
     if (!parsed.currentProfile || !parsed.profiles[parsed.currentProfile]) {
       parsed.currentProfile = Object.keys(parsed.profiles)[0] ?? DEFAULT_PROFILE_NAME;
     }
-    if (!parsed.profiles[DEFAULT_PROFILE_NAME] && Object.keys(parsed.profiles).length === 0) {
-      parsed.profiles[DEFAULT_PROFILE_NAME] = { ...DEFAULT_PROFILE };
-    }
     return parsed;
   } catch {
-    return {
-      currentProfile: DEFAULT_PROFILE_NAME,
-      profiles: { [DEFAULT_PROFILE_NAME]: { ...DEFAULT_PROFILE } },
-    };
+    // The CLI ships with no deployment URLs baked in — an empty config until `lfc init`.
+    return { currentProfile: DEFAULT_PROFILE_NAME, profiles: {} };
   }
 }
 
@@ -64,10 +52,17 @@ export function saveConfig(config: ConfigFile): void {
   fs.writeFileSync(configPath(), `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
 }
 
-export function resolveProfile(config: ConfigFile, name?: string): { name: string; profile: Profile } {
+export function resolveProfile(config: ConfigFile, name?: string, apiUrlOverride?: string): { name: string; profile: Profile } {
   const profileName = name || process.env.LFC_PROFILE || config.currentProfile;
   const profile = config.profiles[profileName];
   if (!profile) {
+    if (Object.keys(config.profiles).length === 0) {
+      // No config yet — an explicit --api-url / LIFECYCLE_API_URL still works (auth-less, ad hoc).
+      if (apiUrlOverride) {
+        return { name: profileName, profile: { apiUrl: apiUrlOverride, authEnabled: false } };
+      }
+      throw new Error('No configuration found. Run `lfc init` to point the CLI at your Lifecycle deployment.');
+    }
     const available = Object.keys(config.profiles).join(', ');
     throw new Error(`Unknown profile "${profileName}" (available: ${available})`);
   }

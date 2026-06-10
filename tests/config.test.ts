@@ -27,12 +27,21 @@ afterEach(() => {
 });
 
 describe('config', () => {
-  it('returns the default prod profile when no config exists', () => {
+  it('ships with no profiles — no deployment URLs baked in', () => {
     const cfg = loadConfig();
     expect(cfg.currentProfile).toBe('default');
-    expect(cfg.profiles.default!.apiUrl).toBe('https://app.lifecycle.lfc.goodrx.com');
-    expect(cfg.profiles.default!.authEnabled).toBe(true);
-    expect(cfg.profiles.default!.keycloak!.clientId).toBe('lifecycle-cli');
+    expect(cfg.profiles).toEqual({});
+    expect(JSON.stringify(cfg)).not.toMatch(/goodrx/i);
+  });
+
+  it('tells the user to run lfc init when unconfigured', () => {
+    expect(() => resolveProfile(loadConfig())).toThrow(/lfc init/);
+  });
+
+  it('allows an ad-hoc apiUrl override with no config (auth-less)', () => {
+    const { profile } = resolveProfile(loadConfig(), undefined, 'https://lc.example.com');
+    expect(profile.apiUrl).toBe('https://lc.example.com');
+    expect(profile.authEnabled).toBe(false);
   });
 
   it('round-trips config edits', () => {
@@ -47,6 +56,7 @@ describe('config', () => {
 
   it('resolves profiles with override and errors on unknown', () => {
     const cfg = loadConfig();
+    cfg.profiles.default = { apiUrl: 'https://lc.example.com', authEnabled: false };
     expect(resolveProfile(cfg).name).toBe('default');
     expect(() => resolveProfile(cfg, 'nope')).toThrow(/Unknown profile/);
   });
