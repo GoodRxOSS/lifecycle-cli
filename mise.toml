@@ -1,0 +1,15 @@
+[tools]
+node = "24"
+pnpm = "9"
+
+[tasks.build]
+run = "pnpm build"
+description = "Bundle the CLI with tsup"
+
+[tasks.dev]
+run = "pnpm dev"
+description = "Run the CLI from source (tsx)"
+
+[tasks.test]
+run = "pnpm test"
+description = "Run unit tests"
