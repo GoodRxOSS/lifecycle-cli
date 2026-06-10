@@ -14,7 +14,7 @@ brave-falcon-7       building  acme/api#88               fix/timeout    jdoe    
 Requires Node ≥ 20.
 
 ```bash
-npm install -g lifecycle-cli
+npm install -g lfc-cli
 lfc --help
 ```
 
