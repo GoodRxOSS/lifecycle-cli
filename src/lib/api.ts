@@ -1,6 +1,18 @@
 import { getAccessToken } from './auth.js';
 import type { Profile } from './config.js';
-import type { ApiEnvelope, Build, BuildListItem, PaginationMetadata, ServiceOverrideState, Site } from './types.js';
+import type {
+  ApiEnvelope,
+  Build,
+  BuildJobInfo,
+  BuildListItem,
+  DeployJobInfo,
+  LogStreamInfo,
+  PaginationMetadata,
+  PodInfo,
+  ServiceOverrideState,
+  Site,
+  WebhookInvocation,
+} from './types.js';
 
 export class ApiError extends Error {
   constructor(
@@ -139,6 +151,56 @@ export class ApiClient {
       { json: { serviceOverrides: overrides } }
     );
     return env.data as { serviceOverrides: ServiceOverrideState[]; queued?: unknown };
+  }
+
+  // --- pods, jobs, logs, webhooks ---
+
+  async listEnvironmentPods(uuid: string): Promise<PodInfo[]> {
+    const env = await this.request<{ pods: PodInfo[] }>('GET', `/api/v2/builds/${encodeURIComponent(uuid)}/pods`);
+    return env.data?.pods ?? [];
+  }
+
+  async listServicePods(uuid: string, service: string): Promise<PodInfo[]> {
+    const env = await this.request<{ pods: PodInfo[] }>(
+      'GET',
+      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/pods`
+    );
+    return env.data?.pods ?? [];
+  }
+
+  async listBuildJobs(uuid: string, service: string): Promise<BuildJobInfo[]> {
+    const env = await this.request<{ builds: BuildJobInfo[] }>(
+      'GET',
+      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/build-jobs`
+    );
+    return env.data?.builds ?? [];
+  }
+
+  async listDeployJobs(uuid: string, service: string): Promise<DeployJobInfo[]> {
+    const env = await this.request<{ deployments: DeployJobInfo[] }>(
+      'GET',
+      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/deploy-jobs`
+    );
+    return env.data?.deployments ?? [];
+  }
+
+  async getJobLogInfo(uuid: string, service: string, jobName: string, kind: 'build' | 'deploy'): Promise<LogStreamInfo> {
+    const segment = kind === 'build' ? 'build-jobs' : 'deploy-jobs';
+    const env = await this.request<LogStreamInfo>(
+      'GET',
+      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/${segment}/${encodeURIComponent(jobName)}`
+    );
+    return env.data as LogStreamInfo;
+  }
+
+  async listWebhookInvocations(uuid: string): Promise<WebhookInvocation[]> {
+    const env = await this.request<WebhookInvocation[]>('GET', `/api/v2/builds/${encodeURIComponent(uuid)}/webhooks`);
+    return env.data ?? [];
+  }
+
+  async invokeWebhooks(uuid: string): Promise<unknown> {
+    const env = await this.request<unknown>('POST', `/api/v2/builds/${encodeURIComponent(uuid)}/webhooks`);
+    return env.data;
   }
 
   // --- sites ---

@@ -13,6 +13,7 @@ export interface Ctx {
   quiet: boolean;
   api: ApiClient;
   uiUrl?: string;
+  cmd: Command;
 }
 
 export function buildCtx(cmd: Command): Ctx {
@@ -27,6 +28,7 @@ export function buildCtx(cmd: Command): Ctx {
     quiet: Boolean(opts.quiet),
     api: new ApiClient(name, profile, opts.apiUrl),
     uiUrl: profile.uiUrl?.replace(/\/$/, ''),
+    cmd,
   };
 }
 

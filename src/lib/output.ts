@@ -61,6 +61,14 @@ export function formatBytes(n?: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+export function formatDuration(seconds?: number): string {
+  if (seconds == null || Number.isNaN(seconds)) return '';
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  if (mins < 60) return `${mins}m${seconds % 60 ? ` ${seconds % 60}s` : ''}`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
+
 export function parseDuration(input: string): number {
   const m = /^(\d+)(ms|s|m|h)?$/.exec(input.trim());
   if (!m) throw new Error(`Invalid duration "${input}" (use e.g. 5s, 2m, 1h)`);

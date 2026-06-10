@@ -272,11 +272,44 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
   </ul>
 </div>
 
-<h2 id="followups">11. Follow-ups <span class="pill followup">tracked</span></h2>
+<h2 id="phase2">11. Phase 2 — Feature Extension <span class="pill followup">shipped</span></h2>
+<p>Goal: feature parity with the GitHub PR comment and the Lifecycle UI — observability (pods, logs, history) and full interactive control over a build's services. All endpoints below were verified in the lifecycle source before implementation.</p>
+<table>
+  <thead><tr><th>#</th><th>Feature</th><th>Command</th><th>API</th><th>Parity with</th></tr></thead>
+  <tbody>
+    <tr><td>P2-1</td><td>Pods &amp; health (env-wide and per-service)</td><td><code>lfc pods list &lt;uuid&gt; [--service n]</code></td><td><code>GET /builds/{uuid}/pods</code>, <code>GET .../services/{name}/pods</code></td><td>UI Pods tab</td></tr>
+    <tr><td>P2-2</td><td>Pod log streaming with pod/container picker</td><td><code>lfc pods logs &lt;uuid&gt; [pod] [-c ctr] [-f] [--tail N] [--timestamps]</code></td><td><code>wss /api/logs/stream?podName&amp;namespace&amp;containerName&amp;follow&amp;tailLines&amp;timestamps</code> — messages <code>{type: log|error|end}</code></td><td>UI pod logs dialog</td></tr>
+    <tr><td>P2-3</td><td>Build &amp; deploy job history per service</td><td><code>lfc services history &lt;uuid&gt; &lt;svc&gt;</code></td><td><code>GET .../services/{name}/build-jobs</code>, <code>.../deploy-jobs</code> (status, sha, engine/type, duration, live|archived)</td><td>UI console tabs</td></tr>
+    <tr><td>P2-4</td><td>Build/deploy job logs (archived or live stream)</td><td><code>lfc services logs &lt;uuid&gt; &lt;svc&gt; [--deploy] [--job name] [-f]</code></td><td><code>GET .../{build-jobs|deploy-jobs}/{jobName}</code> → archived text or websocket params</td><td>UI job log streaming</td></tr>
+    <tr><td>P2-5</td><td>Interactive service editor: check/uncheck optional services, edit branches</td><td><code>lfc services edit &lt;uuid&gt;</code> (TTY multiselect + branch prompts → one PATCH)</td><td><code>PATCH .../services {serviceOverrides:[{name, active, branchOrExternalUrl}]}</code></td><td>GitHub comment checkboxes + branch edit</td></tr>
+    <tr><td>P2-6</td><td>Build settings toggles: static env, track default branches</td><td><code>lfc builds set &lt;uuid&gt; --[no-]static --[no-]track-defaults</code></td><td><code>PATCH /builds/{uuid} {isStatic, trackDefaultBranches}</code></td><td>UI actions menu / comment options</td></tr>
+    <tr><td>P2-7</td><td>Webhook invocations: list + invoke</td><td><code>lfc builds webhooks &lt;uuid&gt; [--invoke]</code></td><td><code>GET|POST /builds/{uuid}/webhooks</code></td><td>UI webhooks tab</td></tr>
+    <tr><td>P2-8</td><td>Open environment in browser</td><td><code>lfc builds open &lt;uuid&gt; [--print]</code></td><td>UI URL <code>/environments/{uuid}</code></td><td>—</td></tr>
+  </tbody>
+</table>
+<p><strong>Design notes:</strong> the log websocket lives on the app host (not <code>/api/v2</code>, so it is outside the auth middleware today — flagged as a core-app follow-up); Node ≥ 22 ships a native <code>WebSocket</code> client so no new dependency is needed. Interactive selection uses @clack/prompts and is TTY-only; every interactive path keeps flag equivalents (<code>services enable/disable/set-branch</code>) so agents are never blocked.</p>
+<p><strong>Out of scope for Phase 2</strong> (exists in UI, deliberately deferred): repository/global config browsing (<code>/api/v2/repositories</code>, config metadata), AI/agent-session features, schema validation endpoint. These are admin/config surfaces rather than per-build workflows.</p>
+<div class="card">
+  <p><strong>Phase 2 e2e results (2026-06-09, prod, build <code>summer-bush-968349</code>):</strong></p>
+  <ul>
+    <li>✅ <code>pods list</code> env-wide and <code>--service</code> filtered (pretty + JSON, container detail).</li>
+    <li>✅ <code>pods logs</code> streamed a live pod over the websocket, tail honored, clean <code>end (ContainerTerminated)</code>.</li>
+    <li>✅ <code>services history</code>: live + <em>archived</em> build/deploy jobs with engine/type/duration/sha.</li>
+    <li>✅ <code>services logs</code>: latest build job auto-selected and live-streamed (buildkit output); archived deploy job (5d old) printed from the log archive including init-container sections.</li>
+    <li>✅ <code>builds set</code>: <code>--static</code> → on, <code>--no-static</code> → off (round-trip verified); no-flag invocation errors with guidance; commander negatable-flag pitfall handled via <code>getOptionValueSource</code>.</li>
+    <li>✅ <code>builds webhooks</code>: empty list rendered correctly (build has no webhooksYaml; <code>--invoke</code> untested for that reason).</li>
+    <li>✅ <code>builds open --print/--json</code> produce the correct UI URL.</li>
+    <li>✅ <code>services set-branch</code> (same branch) exercised the shared serviceOverrides PATCH live — accepted and queued a redeploy that converged to <code>deployed</code>; <code>services edit</code> uses this same PATCH. Non-TTY guard on <code>edit</code> verified (exit 1 with script-friendly alternatives).</li>
+    <li>✅ Unit suite extended to 19 tests (ws URL building, ws message parsing, duration formatting).</li>
+  </ul>
+</div>
+
+<h2 id="followups">12. Follow-ups <span class="pill followup">tracked</span></h2>
 <ul id="followup-list">
   <li>Verify with Okta admin that no per-app policy blocks the brokered CLI login (no redirect-URI change is expected to be needed, since Okta only ever redirects to the Keycloak broker endpoint).</li>
   <li>npm publish + Homebrew tap for distribution.</li>
   <li>Commit the <code>helm-charts</code> additions (<code>lifecycle-keycloak</code> values + realm template <code>lifecycle-cli</code> client block) — currently uncommitted in that repo, pending the user's review.</li>
+  <li>Core app: the <code>/api/logs/stream</code> websocket upgrade is not behind the <code>/api/v2</code> auth middleware — consider requiring a bearer token on the upgrade request when ENABLE_AUTH is on.</li>
 </ul>
 
 <footer>lifecycle-cli &middot; Apache-2.0 &middot; This document is the single source of truth for plan ↔ implementation drift.</footer>
