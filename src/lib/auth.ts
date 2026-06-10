@@ -15,7 +15,9 @@ interface OidcDiscovery {
   end_session_endpoint?: string;
 }
 
-const SCOPES = 'openid profile email';
+// offline_access -> Keycloak issues an offline refresh token governed by the realm's
+// Offline Session Idle timeout (30d default, sliding) instead of the SSO session (~12h)
+const SCOPES = 'openid profile email offline_access';
 const LOGIN_TIMEOUT_MS = 5 * 60_000;
 /** refresh when the access token has less than this much life left */
 const REFRESH_SKEW_MS = 30_000;

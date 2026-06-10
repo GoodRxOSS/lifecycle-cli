@@ -52,7 +52,7 @@ lfc logout
 ```
 
 - Uses the `lifecycle-cli` public Keycloak client with Authorization Code + PKCE (S256) on a localhost loopback redirect; `--device` uses the OAuth Device Code grant (PKCE enforced there too).
-- Tokens are cached per profile at `~/.config/lifecycle-cli/tokens/` (mode 0600) and refreshed automatically; you'll only re-login when the SSO session itself expires (~12h).
+- Tokens are cached per profile at `~/.config/lifecycle-cli/tokens/` (mode 0600) and refreshed automatically. The CLI requests `offline_access`, so the cached session stays valid as long as you use the CLI at least once per the realm's Offline Session Idle timeout (Keycloak default: 30 days) — `lfc logout` revokes it immediately.
 - For auth-less deployments set `authEnabled=false` on the profile and skip all of this.
 
 ## Profiles
