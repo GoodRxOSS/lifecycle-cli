@@ -227,18 +227,24 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
   <li class="done">Interview &amp; decisions captured</li>
   <li class="done">API contract verified against lifecycle source (v2 routes, envelope, multipart shape)</li>
   <li class="done">Plan artifact created (this document)</li>
-  <li>Keycloak <code>lifecycle-cli</code> client provisioned (live admin API + helm chart)</li>
-  <li>Project scaffold (mise, pnpm, tsup, vitest, commander skeleton)</li>
-  <li>Config/profiles + auth (PKCE, device flow, refresh, token cache)</li>
-  <li>API client + builds/services commands (incl. watch)</li>
-  <li>Sites commands (zip/dir upload)</li>
-  <li>Docs (README, CONTRIBUTING, LICENSE)</li>
-  <li>Integration/e2e test pass against prod</li>
+  <li class="done">Keycloak <code>lifecycle-cli</code> client provisioned (live admin API + helm chart)</li>
+  <li class="done">Project scaffold (mise, pnpm, tsup, vitest, commander skeleton)</li>
+  <li class="done">Config/profiles + auth (PKCE, device flow, refresh, token cache)</li>
+  <li class="done">API client + builds/services commands (incl. watch)</li>
+  <li class="done">Sites commands (zip/dir upload)</li>
+  <li class="done">Docs (README, CONTRIBUTING, LICENSE)</li>
+  <li>Integration/e2e test pass against prod (blocked on one interactive <code>lfc login</code> by the user — see Deviations #4)</li>
 </ul>
 
 <h2 id="deviations">9. Deviations &amp; Decisions Made During Implementation</h2>
 <div class="deviation" id="deviations-list">
-  <em>None yet — will be recorded here as they happen.</em>
+  <ol>
+    <li><strong>Keycloak enforces PKCE on the device flow too.</strong> The first device-flow smoke test failed with <code>Missing parameter: code_challenge_method</code> because the client sets <code>pkce.code.challenge.method=S256</code>, which Keycloak applies to <em>all</em> grants. The CLI therefore sends <code>code_challenge</code>/<code>code_challenge_method</code> on the device-authorization request and <code>code_verifier</code> on every token poll. This is stricter than the plan assumed (plan only required PKCE on the loopback flow) — kept, since it strengthens the device flow.</li>
+    <li><strong>KeycloakRealmImport CRs only apply at first realm creation.</strong> Updating the realm-import template alone would never reach the live realm. Per the user's authorization ("use of existing install and admin api's only to add is okay"), the live <code>lifecycle-cli</code> client was created additively via the Keycloak admin API, and the identical client block was added to the helm chart (gated on <code>clients.lifecycleCli.enabled</code>) so fresh installs match. No existing realm values were modified.</li>
+    <li><strong>tsup bundle needed a <code>createRequire</code> shim.</strong> Bundling CJS deps (archiver et al.) into a single ESM file produced "Dynamic require of 'events' is not supported" at runtime. Fixed by adding a <code>createRequire(import.meta.url)</code> banner next to the shebang in <code>tsup.config.ts</code>.</li>
+    <li><strong>Autonomous e2e token minting was (correctly) blocked.</strong> Two shortcuts for obtaining a prod API token without a human — enabling the password grant on the live <code>lifecycle-cli</code> client, and creating a disposable service-account client with the <code>lifecycle-core</code> audience — were denied as modifications of shared production auth infra beyond the "add only the CLI client" authorization. Resolution: the e2e pass starts with the user running <code>lfc login</code> interactively, which is the genuine SSO e2e test anyway. No auth weakening was introduced.</li>
+    <li><strong><code>builds redeploy --watch</code> shares the watch loop with <code>builds status --watch</code></strong> via a <code>watchBuild()</code> helper instead of re-invoking the command parser — cleaner exit-code semantics (0 deployed / 1 failed / 2 timeout) from both entry points.</li>
+  </ol>
 </div>
 
 <h2 id="testing">10. Testing Strategy &amp; Results</h2>
@@ -248,13 +254,17 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
   <li><strong>E2E</strong>: real <code>lfc login</code> through Keycloak→Okta browser SSO; sites create→get→update→extend→delete roundtrip; service redeploy on a safe build; watch mode observation.</li>
 </ul>
 <div class="card" id="test-results">
-  <em>Results pending — will be filled in after the e2e pass.</em>
+  <p><strong>Unit (vitest):</strong> ✅ 14/14 passing — ANSI-aware table alignment, duration/byte formatting, config round-trip &amp; profile resolution, token file 0600 permissions, PKCE S256 verifier/challenge correctness, JWT payload decoding.</p>
+  <p><strong>Build &amp; static checks:</strong> ✅ <code>pnpm typecheck</code> clean (strict, <code>noUncheckedIndexedAccess</code>); <code>pnpm build</code> produces a single-file executable <code>dist/index.js</code> (~1.04&nbsp;MB); all command help screens verified.</p>
+  <p><strong>Keycloak client smoke test:</strong> ✅ device-authorization request against the live realm returns a valid <code>verification_uri_complete</code> for the new <code>lifecycle-cli</code> client (PKCE-on-device-flow behavior discovered and handled here). Helm chart addition verified with <code>helm template</code>.</p>
+  <p><strong>E2E against prod:</strong> ⏳ pending one interactive <code>lfc login</code> by the user (browser SSO through Okta→Keycloak). Planned pass: <code>whoami</code>, <code>builds list/get</code>, <code>services list</code>, sites create→get→update→extend→delete roundtrip, <code>builds status --watch</code>. Results will be recorded here.</p>
 </div>
 
 <h2 id="followups">11. Follow-ups <span class="pill followup">tracked</span></h2>
 <ul id="followup-list">
   <li>Verify with Okta admin that no per-app policy blocks the brokered CLI login (no redirect-URI change is expected to be needed, since Okta only ever redirects to the Keycloak broker endpoint).</li>
   <li>npm publish + Homebrew tap for distribution.</li>
+  <li>Commit the <code>helm-charts</code> additions (<code>lifecycle-keycloak</code> values + realm template <code>lifecycle-cli</code> client block) — currently uncommitted in that repo, pending the user's review.</li>
 </ul>
 
 <footer>lifecycle-cli &middot; Apache-2.0 &middot; This document is the single source of truth for plan ↔ implementation drift.</footer>
