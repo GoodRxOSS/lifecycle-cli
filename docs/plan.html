@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lifecycle CLI (lfc) — Plan &amp; Implementation Notes</title>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+</script>
+<style>
+  :root {
+    --bg: #fafaf9; --fg: #1c1917; --muted: #78716c; --accent: #0d9488;
+    --card: #ffffff; --border: #e7e5e4; --code-bg: #f5f5f4;
+    --ok: #16a34a; --warn: #d97706; --pending: #a8a29e;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--fg); margin: 0; line-height: 1.6; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; }
+  h1 { font-size: 2rem; margin-bottom: .25rem; }
+  h2 { margin-top: 3rem; padding-bottom: .4rem; border-bottom: 2px solid var(--accent); font-size: 1.4rem; }
+  h3 { margin-top: 1.8rem; font-size: 1.1rem; }
+  .subtitle { color: var(--muted); margin-top: 0; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { border: 1px solid var(--border); padding: .45rem .6rem; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em; }
+  code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; }
+  pre { background: var(--code-bg); padding: .9rem 1rem; border-radius: 8px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 600; padding: .12rem .55rem; border-radius: 999px; margin-left: .5rem; vertical-align: middle; }
+  .pill.done { background: #dcfce7; color: var(--ok); }
+  .pill.progress { background: #fef3c7; color: var(--warn); }
+  .pill.pending { background: #f5f5f4; color: var(--pending); }
+  .pill.followup { background: #fee2e2; color: #b91c1c; }
+  .mermaid { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin: 1rem 0; }
+  ul.checklist { list-style: none; padding-left: 0; }
+  ul.checklist li { padding-left: 1.6rem; position: relative; margin: .3rem 0; }
+  ul.checklist li::before { content: "○"; position: absolute; left: .2rem; color: var(--pending); }
+  ul.checklist li.done::before { content: "●"; color: var(--ok); }
+  .toc { columns: 2; font-size: .92rem; }
+  .note { border-left: 4px solid var(--accent); padding: .5rem 1rem; background: var(--card); margin: 1rem 0; }
+  .deviation { border-left: 4px solid var(--warn); padding: .5rem 1rem; background: var(--card); margin: .75rem 0; }
+  footer { margin-top: 4rem; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Lifecycle CLI — <code>lfc</code></h1>
+<p class="subtitle">Plan, architecture, and implementation notes &middot; started 2026-06-09 &middot; living document, updated as implementation progresses</p>
+
+<div class="card toc">
+<strong>Contents</strong>
+<ol>
+  <li><a href="#goals">Goals &amp; Scope</a></li>
+  <li><a href="#decisions">Decisions (from interview)</a></li>
+  <li><a href="#stack">Tool Choices</a></li>
+  <li><a href="#architecture">Architecture</a></li>
+  <li><a href="#auth">Auth Design (Keycloak + Okta SSO)</a></li>
+  <li><a href="#api">API Contract Used</a></li>
+  <li><a href="#commands">Command Surface</a></li>
+  <li><a href="#progress">Implementation Progress</a></li>
+  <li><a href="#deviations">Deviations &amp; Decisions Made During Implementation</a></li>
+  <li><a href="#testing">Testing Strategy &amp; Results</a></li>
+  <li><a href="#followups">Follow-ups</a></li>
+</ol>
+</div>
+
+<h2 id="goals">1. Goals &amp; Scope</h2>
+<p><strong>Lifecycle</strong> is a preview-environment orchestrator (core app <code>lifecycle</code>, frontend <code>lifecycle-ui</code>, charts in <code>helm-charts</code>), deployed to the <code>lifecycle-app</code> namespace on <code>lifecycle-prd-eks</code>. The CLI gives both humans and agents first-class terminal access to everything a user can do in the UI:</p>
+<ul>
+  <li>View builds (environments) and all their information, similar to the UI.</li>
+  <li>List deployed services in a build with their public links.</li>
+  <li>Redeploy a whole build, or selectively redeploy a single service.</li>
+  <li>Watch a build until it converges (<code>--watch</code>) — for CI and agents.</li>
+  <li>Everything a user can change on a build: rename UUID, comment env-var overrides (<code>commentRuntimeEnv</code>/<code>commentInitEnv</code>), service overrides.</li>
+  <li><strong>Sites</strong>: upload static sites (HTML/ZIP/directory) and get back the ID + URL; list, update content, extend TTL, delete.</li>
+  <li>SSO login through the existing Keycloak → Okta (<code>company-sso</code> IdP) setup when auth is enabled.</li>
+  <li>Agent-friendly: <code>--json</code> on every command, non-interactive paths for everything.</li>
+</ul>
+
+<h2 id="decisions">2. Decisions (from interview)</h2>
+<table>
+<tr><th>Question</th><th>Decision</th></tr>
+<tr><td>Binary name</td><td><code>lfc</code> (package <code>lifecycle-cli</code>)</td></tr>
+<tr><td>Login flows</td><td>Authorization Code + PKCE on localhost loopback (default, opens browser) <em>and</em> OAuth Device Code flow via <code>--device</code> for headless machines</td></tr>
+<tr><td>Keycloak client</td><td>New public client <code>lifecycle-cli</code> added to the <em>live</em> realm via admin API (no fresh realm reinstall, no edits to existing clients) + added to the <code>lifecycle-keycloak</code> chart realm-import template for fresh installs</td></tr>
+<tr><td>Extra scope</td><td>Status watch mode (<code>lfc builds status --watch</code>)</td></tr>
+<tr><td>Output</td><td>Pretty human output by default; global <code>--json</code> + non-TTY auto-detection for agents</td></tr>
+<tr><td>Config</td><td>Named profiles at <code>~/.config/lifecycle-cli/</code>; default profile points at prod (<code>https://app.lifecycle.lfc.goodrx.com</code>)</td></tr>
+<tr><td>Distribution</td><td>Local install via <code>pnpm link --global</code>; npm publish / brew documented as follow-up</td></tr>
+<tr><td>"Comments"</td><td>= comment env overrides on the build (<code>commentRuntimeEnv</code> / <code>commentInitEnv</code> via <code>PATCH /api/v2/builds/{uuid}</code>)</td></tr>
+<tr><td>License</td><td>Apache-2.0, same as the core app</td></tr>
+</table>
+
+<h2 id="stack">3. Tool Choices</h2>
+<table>
+<tr><th>Concern</th><th>Choice</th><th>Why</th></tr>
+<tr><td>Language / runtime</td><td>TypeScript on Node ≥ 20</td><td>Matches the rest of the Lifecycle stack; native <code>fetch</code>, <code>crypto</code> for PKCE</td></tr>
+<tr><td>Package manager / env</td><td>pnpm + mise (<code>mise.toml</code> pins node &amp; pnpm)</td><td>Requested; reproducible dev env</td></tr>
+<tr><td>CLI framework</td><td><code>commander</code></td><td>Battle-tested, subcommand trees, great help output, tiny</td></tr>
+<tr><td>Interactivity</td><td><code>@clack/prompts</code></td><td>Pleasant prompts/spinners; only used when TTY &amp; not <code>--json</code></td></tr>
+<tr><td>Styling</td><td><code>picocolors</code></td><td>Tiny, respects <code>NO_COLOR</code></td></tr>
+<tr><td>HTTP</td><td>Native <code>fetch</code> (undici)</td><td>No dependency; multipart via native <code>FormData</code>/<code>Blob</code></td></tr>
+<tr><td>Zip (dir upload)</td><td><code>archiver</code></td><td>Streamed zip of a directory for <code>sites create &lt;dir&gt;</code></td></tr>
+<tr><td>Build</td><td><code>tsup</code> (esbuild)</td><td>Single-file ESM bundle, fast</td></tr>
+<tr><td>Tests</td><td><code>vitest</code></td><td>Fast TS-native unit tests; e2e run against prod with a session token</td></tr>
+<tr><td>Auth</td><td>Hand-rolled OIDC (PKCE + device flow) with <code>openid-client</code>-style discovery</td><td>Flows are small &amp; standard; avoids heavyweight deps; tokens cached on disk (0600)</td></tr>
+</table>
+
+<h2 id="architecture">4. Architecture</h2>
+<pre class="mermaid">
+flowchart LR
+  subgraph CLI["lfc (lifecycle-cli)"]
+    CMD["commands/*\nbuilds · services · sites · auth · config"]
+    OUT["output layer\npretty tables ⟷ --json"]
+    API["lib/api.ts\ntyped client, envelope unwrap,\nauto token refresh"]
+    AUTH["lib/auth.ts\nPKCE loopback · device flow\ntoken cache + refresh"]
+    CFG["lib/config.ts\nprofiles @ ~/.config/lifecycle-cli"]
+    CMD --> OUT
+    CMD --> API
+    API --> AUTH
+    AUTH --> CFG
+    API --> CFG
+  end
+  KC["Keycloak\nauth.lifecycle.lfc.goodrx.com\nrealm: lifecycle\nclient: lifecycle-cli (public, PKCE)"]
+  OKTA["Okta\n(company-sso IdP broker)"]
+  CORE["Lifecycle API\napp.lifecycle.lfc.goodrx.com\n/api/v2 (auth) · /api/v1"]
+  SITES["*.sites.lfc.goodrx.com"]
+  AUTH -- "OIDC browser SSO" --> KC
+  KC -- "brokered login" --> OKTA
+  API -- "Bearer JWT (aud: lifecycle-core)" --> CORE
+  CORE -- "site URLs" --> SITES
+</pre>
+
+<h3>Login sequence (PKCE loopback, default)</h3>
+<pre class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant C as lfc login
+  participant B as Browser
+  participant K as Keycloak (realm lifecycle)
+  participant O as Okta (company-sso)
+  C->>C: generate code_verifier + S256 challenge,&lt;br/&gt;listen on 127.0.0.1:&lt;random&gt;/callback
+  C->>B: open /auth?client_id=lifecycle-cli&amp;redirect_uri=http://127.0.0.1:PORT/callback&amp;code_challenge=...
+  B->>K: authorization request
+  K->>O: redirect to brokered IdP (web SSO)
+  O-->>K: id assertion (existing Okta↔Keycloak setup, unchanged)
+  K-->>B: 302 → http://127.0.0.1:PORT/callback?code=...
+  B->>C: loopback hits local listener
+  C->>K: POST /token (code + code_verifier)
+  K-->>C: access_token (aud lifecycle-core) + refresh_token
+  C->>C: store tokens ~/.config/lifecycle-cli/ (0600)
+</pre>
+
+<h3>Watch mode</h3>
+<pre class="mermaid">
+flowchart TD
+  A["lfc builds status uuid --watch"] --> B["GET /api/v2/builds/{uuid}"]
+  B --> C{build status?}
+  C -- "deployed / failed / torn down" --> D["render final per-service table, exit 0/1"]
+  C -- "in progress" --> E["render live per-service progress\n(spinner + status lines)"]
+  E --> F["sleep poll interval (default 5s)"]
+  F --> B
+</pre>
+
+<h2 id="auth">5. Auth Design</h2>
+<div class="note">
+<strong>Live deployment facts</strong> (verified via kubectl on <code>lifecycle-prd-eks</code>): <code>ENABLE_AUTH=true</code>,
+issuer <code>https://auth.lifecycle.lfc.goodrx.com/realms/lifecycle</code>, backend validates audience <code>lifecycle-core</code>.
+Auth is enforced on <code>/api/v2/*</code> only.
+</div>
+<ul>
+  <li><strong>New Keycloak client <code>lifecycle-cli</code></strong> (public, no secret): standard flow + PKCE S256 required, device grant enabled, redirect URIs <code>http://localhost/*</code> + <code>http://127.0.0.1/*</code> (loopback, any port), and a protocol mapper adding audience <code>lifecycle-core</code> (mirrors the existing <code>lifecycle-ui</code> mapper). Created via admin API against the live realm; also added to the chart's realm import for fresh installs. <em>No existing realm values touched.</em></li>
+  <li><strong>Okta needs no changes</strong>: its redirect URI is the Keycloak broker endpoint, which already exists; the CLI rides the same <code>company-sso</code> browser flow. Flagged as a follow-up check only if Okta enforces per-app session policies.</li>
+  <li><strong>Token lifecycle</strong>: access tokens are 5 min; CLI auto-refreshes with the refresh token (~10h idle / 12h max session), then asks to re-login. <code>scope=openid profile email offline_access</code> requested (falls back gracefully if offline_access is not allowed).</li>
+  <li><strong>Auth-disabled installs</strong>: if a profile has <code>authEnabled=false</code> (or discovery fails open per config), requests are sent without a bearer token — matching OSS quickstart deployments.</li>
+</ul>
+
+<h2 id="api">6. API Contract Used (verified against source)</h2>
+<p>Response envelope everywhere: <code>{ request_id, data, error, metadata? }</code>. The CLI is <strong>v2-first</strong> (matches what the UI uses).</p>
+<table>
+<tr><th>CLI feature</th><th>Endpoint</th><th>Notes</th></tr>
+<tr><td>List builds</td><td><code>GET /api/v2/builds</code></td><td><code>page, limit, search, exclude, my_envs</code>; rows include PR title/branch + deploy statuses</td></tr>
+<tr><td>Build detail / services+links</td><td><code>GET /api/v2/builds/{uuid}</code></td><td><code>deploys[]</code> with <code>status, publicUrl, dockerImage, sha, env, deployable.name</code>, serviceOverride state</td></tr>
+<tr><td>Update uuid / env overrides / flags</td><td><code>PATCH /api/v2/builds/{uuid}</code></td><td>fields: <code>uuid, isStatic, trackDefaultBranches, commentRuntimeEnv, commentInitEnv</code></td></tr>
+<tr><td>Redeploy build</td><td><code>PUT /api/v2/builds/{uuid}/redeploy</code></td><td></td></tr>
+<tr><td>Destroy build</td><td><code>PUT /api/v2/builds/{uuid}/destroy</code></td><td>confirmation required in CLI</td></tr>
+<tr><td>Redeploy one service</td><td><code>PUT /api/v2/builds/{uuid}/services/{name}/redeploy</code></td><td></td></tr>
+<tr><td>Service overrides (enable/disable/branch)</td><td><code>PATCH /api/v2/builds/{uuid}/services</code></td><td><code>{serviceOverrides:[{name, active?, branchOrExternalUrl?}]}</code></td></tr>
+<tr><td>Pods / metadata / webhooks</td><td><code>GET .../pods</code>, <code>GET .../metadata</code>, <code>GET .../webhooks</code></td><td>used by <code>lfc builds get --full</code> &amp; status</td></tr>
+<tr><td>Sites list/create</td><td><code>GET|POST /api/v2/sites</code></td><td>POST multipart: <code>file</code> (zip or single html) + optional <code>name</code></td></tr>
+<tr><td>Site get/delete</td><td><code>GET|DELETE /api/v2/sites/{siteId}</code></td><td></td></tr>
+<tr><td>Site replace content</td><td><code>PUT /api/v2/sites/{siteId}/content</code></td><td>multipart, new version</td></tr>
+<tr><td>Site extend TTL</td><td><code>POST /api/v2/sites/{siteId}/extend</code></td><td></td></tr>
+</table>
+
+<h2 id="commands">7. Command Surface</h2>
+<pre><code>lfc login [--device] [--no-browser]      # SSO via Keycloak→Okta; PKCE loopback or device code
+lfc logout / lfc whoami
+lfc config list|get|set|use-profile      # profiles at ~/.config/lifecycle-cli/config.json
+
+lfc builds list [--mine] [--search q] [--all] [--page/-n]
+lfc builds get &lt;uuid&gt; [--full]
+lfc builds status &lt;uuid&gt; [--watch] [--interval 5s] [--timeout 30m]
+lfc builds redeploy &lt;uuid&gt;
+lfc builds destroy &lt;uuid&gt; [--yes]
+lfc builds update-uuid &lt;uuid&gt; &lt;new-uuid&gt;
+lfc builds env get|set|unset &lt;uuid&gt; [--init] [KEY=VALUE...]
+
+lfc services list &lt;build-uuid&gt;            # names, status, public links
+lfc services redeploy &lt;build-uuid&gt; &lt;name&gt;
+lfc services enable|disable &lt;build-uuid&gt; &lt;name&gt;
+lfc services set-branch &lt;build-uuid&gt; &lt;name&gt; &lt;branch-or-url&gt;
+
+lfc sites list [--mine]
+lfc sites create &lt;file.zip|file.html|dir&gt; [--name n]   # dirs auto-zipped; prints id + url
+lfc sites get|delete|extend &lt;siteId&gt;
+lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
+
+# global: --json  --profile &lt;p&gt;  --api-url &lt;url&gt;  --quiet</code></pre>
+
+<h2 id="progress">8. Implementation Progress</h2>
+<ul class="checklist" id="progress-list">
+  <li class="done">Interview &amp; decisions captured</li>
+  <li class="done">API contract verified against lifecycle source (v2 routes, envelope, multipart shape)</li>
+  <li class="done">Plan artifact created (this document)</li>
+  <li>Keycloak <code>lifecycle-cli</code> client provisioned (live admin API + helm chart)</li>
+  <li>Project scaffold (mise, pnpm, tsup, vitest, commander skeleton)</li>
+  <li>Config/profiles + auth (PKCE, device flow, refresh, token cache)</li>
+  <li>API client + builds/services commands (incl. watch)</li>
+  <li>Sites commands (zip/dir upload)</li>
+  <li>Docs (README, CONTRIBUTING, LICENSE)</li>
+  <li>Integration/e2e test pass against prod</li>
+</ul>
+
+<h2 id="deviations">9. Deviations &amp; Decisions Made During Implementation</h2>
+<div class="deviation" id="deviations-list">
+  <em>None yet — will be recorded here as they happen.</em>
+</div>
+
+<h2 id="testing">10. Testing Strategy &amp; Results</h2>
+<ul>
+  <li><strong>Unit (vitest)</strong>: config/profile resolution, output formatting, envelope unwrapping, env KEY=VALUE parsing, PKCE generation.</li>
+  <li><strong>Integration</strong>: API client against the live prod API (read-only endpoints) using a real token.</li>
+  <li><strong>E2E</strong>: real <code>lfc login</code> through Keycloak→Okta browser SSO; sites create→get→update→extend→delete roundtrip; service redeploy on a safe build; watch mode observation.</li>
+</ul>
+<div class="card" id="test-results">
+  <em>Results pending — will be filled in after the e2e pass.</em>
+</div>
+
+<h2 id="followups">11. Follow-ups <span class="pill followup">tracked</span></h2>
+<ul id="followup-list">
+  <li>Verify with Okta admin that no per-app policy blocks the brokered CLI login (no redirect-URI change is expected to be needed, since Okta only ever redirects to the Keycloak broker endpoint).</li>
+  <li>npm publish + Homebrew tap for distribution.</li>
+</ul>
+
+<footer>lifecycle-cli &middot; Apache-2.0 &middot; This document is the single source of truth for plan ↔ implementation drift.</footer>
+</div>
+</body>
+</html>
