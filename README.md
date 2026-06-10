@@ -108,6 +108,24 @@ lfc pods logs <build-uuid> <pod-name> -f --tail 500 --timestamps
 
 Log streaming uses the deployment's websocket endpoint (`/api/logs/stream`); `Ctrl-C` stops cleanly. In scripts, pass the pod name explicitly — the picker only appears on a TTY.
 
+## Schema validation
+
+Validate a `lifecycle.yaml` before you push — same JSON-schema checks the server runs, but with per-field error details:
+
+```bash
+lfc schema validate                        # auto-detects lifecycle.yaml / .lifecycle.yaml / *.yml in cwd
+lfc schema validate path/to/lifecycle.yaml # or a directory to search
+lfc schema validate --repo org/repo --branch my-branch   # server-side check of a pushed branch
+```
+
+```
+✗ lifecycle.yaml failed schema 1.0.0 validation (2 errors)
+  environment: is not allowed to have the additional property "autoDeplo"
+  services[0].helm.branchName: is not of a type(s) string
+```
+
+Runs fully offline (no auth needed) except `--repo/--branch`. Exit codes: `0` valid, `1` invalid, `3` no config file found — handy as a pre-commit hook or agent guardrail. `--json` emits `{valid, file, errors: [{path, message}]}`.
+
 ## Sites (static site hosting)
 
 Upload a ZIP, a single HTML file, or a directory (auto-zipped) and get a stable URL back:
