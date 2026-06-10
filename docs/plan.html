@@ -343,6 +343,7 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
     <tr><td>P4-5</td><td>Config-free shipping</td><td>Removed the baked-in <code>DEFAULT_PROFILE</code> (GoodRx URLs) from <code>src/lib/config.ts</code>. Fresh install has an empty config; API commands error with "Run <code>lfc init</code>". <code>--api-url</code>/<code>LIFECYCLE_API_URL</code> still work ad hoc with no config (auth-less). <code>config add-profile</code> now requires <code>--api-url</code> (+ <code>--issuer</code> unless <code>--no-auth</code>).</td></tr>
     <tr><td>P4-6</td><td>First-time setup</td><td>New <code>lfc init</code>: interactive prompts on a TTY (app URL → UI URL → auth → issuer) or flags for scripts; probes the API URL for reachability, saves the profile, then chains straight into SSO login (<code>--no-login</code>, <code>--device</code> escape hatches). An explicit <code>--issuer</code> implies auth without prompting.</td></tr>
     <tr><td>P4-7</td><td>Internal setup script</td><td><code>lfc-setup.sh</code> pins the GoodRx URLs and runs <code>npm i -g lifecycle-cli && lfc init … --force</code> (login included; <code>--device</code> passthrough). Deliberately <strong>not</strong> in this repo — it lives with the team (currently <code>~/Downloads/lfc-setup.sh</code>) so the repo/package stay vendor-neutral.</td></tr>
+    <tr><td>P4-8</td><td>Agent instructions command</td><td><code>lfc llms</code> (alias <code>lfc instructions</code>) prints a self-contained, llms.txt-style document — setup, auth flows, command surface, JSON/exit-code contract, agent recipes, and a "troubleshooting a stuck user" runbook — so agents run a local command instead of fetching docs from the web. Plain markdown, no ANSI, vendor-neutral; points to <a href="https://uselifecycle.com/llms.txt">uselifecycle.com/llms.txt</a> for platform-level reference. Shipped in <code>v0.1.1</code> (CLI version now single-sourced from <code>package.json</code>).</td></tr>
   </tbody>
 </table>
 <div class="card">
@@ -354,6 +355,7 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
     <li>✅ Unit suite 31 tests (config tests rewritten for the empty-default behavior).</li>
     <li>✅ <strong>Published (2026-06-10):</strong> <code>lfc-cli@0.1.0</code> live on npm via the release workflow on the <code>v0.1.0</code> GitHub Release. Two npm-token iterations were needed: a token without 2FA-bypass → 403; a token that couldn't create new packages → 404 on first publish; a granular token with read/write on <em>all packages</em> + bypass-2FA succeeded.</li>
     <li>✅ <strong>setup.sh e2e:</strong> <code>lfc-setup.sh --no-login</code> installed <code>lfc-cli@latest</code> from npm, probed prod ("reachable, auth enforced"), wrote the profile. The npm-installed binary then passed <code>whoami</code> (cached SSO tokens), <code>builds list</code>, and <code>schema validate --repo/--branch</code> against prod. Ready to share with peers.</li>
+    <li>✅ <strong>v0.1.1 (2026-06-10):</strong> <code>lfc llms</code> added; suite now 34 tests (3 new: content coverage, no-ANSI/no-escaping-artifact output, vendor-neutrality of the document).</li>
   </ul>
 </div>
 
