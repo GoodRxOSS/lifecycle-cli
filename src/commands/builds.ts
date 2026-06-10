@@ -2,6 +2,7 @@ import * as clack from '@clack/prompts';
 import { Command } from 'commander';
 import pc from 'picocolors';
 
+import { openBrowser } from '../lib/auth.js';
 import { runAction, type Ctx } from '../lib/context.js';
 import { formatAge, link, parseDuration, printJson, renderTable, statusColor } from '../lib/output.js';
 import { BUILD_TERMINAL_FAILURE, BUILD_TERMINAL_SUCCESS, type Build, type Deploy } from '../lib/types.js';
@@ -264,6 +265,81 @@ export function registerBuildsCommands(program: Command): void {
           const ui = buildUiUrl(ctx, build.uuid);
           if (ui) process.stderr.write(`  ${link(ui)}\n`);
         }
+      })
+    );
+
+  builds
+    .command('set <uuid>')
+    .description('Change build settings: static pin, default-branch tracking')
+    .option('--static', 'pin as a static environment (no auto-teardown)')
+    .option('--no-static', 'unpin the static environment')
+    .option('--track-defaults', 'follow default branches for services without overrides')
+    .option('--no-track-defaults', 'stop following default branches')
+    .action(
+      runAction(async (ctx, uuid: string, opts: { static?: boolean; trackDefaults?: boolean }) => {
+        const patch: Record<string, unknown> = {};
+        // commander negatable flags default to true when never passed — only patch what was given
+        if (ctx.cmd.getOptionValueSource('static') === 'cli') patch.isStatic = opts.static;
+        if (ctx.cmd.getOptionValueSource('trackDefaults') === 'cli') patch.trackDefaultBranches = opts.trackDefaults;
+        if (Object.keys(patch).length === 0) {
+          throw new Error('Nothing to change — pass --[no-]static and/or --[no-]track-defaults');
+        }
+        const build = await ctx.api.patchBuild(uuid, patch);
+        if (ctx.json) printJson({ uuid: build.uuid, isStatic: build.isStatic, trackDefaultBranches: build.trackDefaultBranches });
+        else {
+          process.stderr.write(`${pc.green('✓')} ${build.uuid} updated\n`);
+          process.stdout.write(`  static       ${build.isStatic ? pc.green('yes') : 'no'}\n`);
+          process.stdout.write(`  track-defaults  ${build.trackDefaultBranches ? pc.green('yes') : 'no'}\n`);
+        }
+      })
+    );
+
+  builds
+    .command('webhooks <uuid>')
+    .description('List webhook invocations for a build, or trigger them')
+    .option('--invoke', 'invoke the webhooks configured in the build\'s webhooksYaml', false)
+    .action(
+      runAction(async (ctx, uuid: string, opts: { invoke: boolean }) => {
+        if (opts.invoke) {
+          const result = await ctx.api.invokeWebhooks(uuid);
+          if (ctx.json) printJson({ build: uuid, invoked: result ?? true });
+          else process.stderr.write(`${pc.green('✓')} Webhooks invoked for ${uuid}\n`);
+          return;
+        }
+        const invocations = await ctx.api.listWebhookInvocations(uuid);
+        if (ctx.json) {
+          printJson({ build: uuid, invocations });
+          return;
+        }
+        if (invocations.length === 0) {
+          process.stdout.write(pc.dim('No webhook invocations.\n'));
+          return;
+        }
+        const rows = invocations.map((w) => [
+          w.name,
+          w.type,
+          statusColor(w.status),
+          w.runUUID,
+          formatAge(w.createdAt),
+        ]);
+        process.stdout.write(renderTable(['name', 'type', 'status', 'run', 'when'], rows) + '\n');
+      })
+    );
+
+  builds
+    .command('open <uuid>')
+    .description('Open the environment in the Lifecycle UI')
+    .option('--print', 'print the URL instead of opening a browser', false)
+    .action(
+      runAction(async (ctx, uuid: string, opts: { print: boolean }) => {
+        const url = buildUiUrl(ctx, uuid);
+        if (!url) throw new Error('No uiUrl configured for this profile (lfc config set uiUrl <url>)');
+        if (ctx.json) {
+          printJson({ uuid, url });
+          return;
+        }
+        process.stdout.write(`${link(url)}\n`);
+        if (!opts.print) openBrowser(url);
       })
     );
 

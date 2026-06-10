@@ -66,6 +66,10 @@ lfc builds status <uuid> --watch         # live-updating until deployed/failed; 
 lfc builds redeploy <uuid> [--watch]     # redeploy everything
 lfc builds destroy <uuid> [--yes]        # tear down (asks first)
 lfc builds update-uuid <uuid> <new-uuid> # rename the environment
+lfc builds set <uuid> --static           # pin as static env (--no-static unpins)
+lfc builds set <uuid> --track-defaults   # follow default branches (--no-track-defaults)
+lfc builds webhooks <uuid> [--invoke]    # webhook invocation history / trigger them
+lfc builds open <uuid> [--print]         # open in the Lifecycle UI
 ```
 
 ### Env-var overrides (the “PR comment” overrides)
@@ -86,7 +90,23 @@ lfc services redeploy <build-uuid> <name>      # rebuild + redeploy just one ser
 lfc services enable  <build-uuid> <name>       # toggle optional services
 lfc services disable <build-uuid> <name>
 lfc services set-branch <build-uuid> <name> <branch-or-url>
+lfc services edit <build-uuid>                 # interactive: check/uncheck services,
+                                               # edit branches — like the PR comment
+lfc services history <build-uuid> <name>       # build + deploy job history (sha, engine, duration)
+lfc services logs <build-uuid> <name>          # latest build-job logs (archived or live)
+lfc services logs <build-uuid> <name> --deploy --job <jobName> -f
 ```
+
+## Pods & logs
+
+```bash
+lfc pods list <build-uuid>                     # health: ready, status, restarts, age
+lfc pods list <build-uuid> --service web       # one service's pods
+lfc pods logs <build-uuid>                     # interactive pod/container picker
+lfc pods logs <build-uuid> <pod-name> -f --tail 500 --timestamps
+```
+
+Log streaming uses the deployment's websocket endpoint (`/api/logs/stream`); `Ctrl-C` stops cleanly. In scripts, pass the pod name explicitly — the picker only appears on a TTY.
 
 ## Sites (static site hosting)
 

@@ -75,7 +75,10 @@ export interface Build {
   sha?: string | null;
   manifest?: unknown;
   isStatic?: boolean;
+  trackDefaultBranches?: boolean;
   kind?: string;
+  enableFullYaml?: boolean;
+  webhooksYaml?: string | null;
   createdAt?: string;
   updatedAt?: string;
   commentRuntimeEnv?: Record<string, string> | null;
@@ -109,6 +112,85 @@ export interface Site {
   sizeBytes?: number;
   createdBy?: string | null;
   updatedBy?: string | null;
+}
+
+export interface ContainerInfo {
+  name: string;
+  state?: string;
+  ready?: boolean;
+  restarts?: number;
+  image?: string;
+}
+
+/** lifecycle/src/server/lib/kubernetes/getEnvironmentPods.ts (serviceName only on env-wide list) */
+export interface PodInfo {
+  podName: string;
+  serviceName?: string;
+  status: string;
+  restarts: number;
+  ageSeconds: number;
+  age: string;
+  ready: string; // "X/Y"
+  containers: ContainerInfo[];
+}
+
+/** lifecycle/src/server/lib/kubernetes/getNativeBuildJobs.ts */
+export interface BuildJobInfo {
+  jobName: string;
+  buildUuid: string;
+  sha: string;
+  status: 'Active' | 'Complete' | 'Failed' | 'Pending';
+  startedAt?: string;
+  completedAt?: string;
+  duration?: number;
+  engine: string;
+  error?: string;
+  podName?: string;
+  source?: 'live' | 'archived';
+}
+
+/** lifecycle/src/server/lib/kubernetes/getDeploymentJobs.ts */
+export interface DeployJobInfo {
+  jobName: string;
+  deployUuid: string;
+  sha: string;
+  status: 'Active' | 'Complete' | 'Failed' | 'Pending';
+  startedAt?: string;
+  completedAt?: string;
+  duration?: number;
+  error?: string;
+  podName?: string;
+  deploymentType: string;
+  source?: 'live' | 'archived';
+}
+
+/** lifecycle/src/server/services/logStreaming.ts */
+export interface LogStreamInfo {
+  status: string; // Active | Pending | Complete | Failed | NotFound | Archived
+  streamingRequired: boolean;
+  podName?: string;
+  websocket?: {
+    endpoint: string;
+    parameters: { podName: string; namespace: string; follow: boolean; timestamps: boolean };
+  };
+  containers?: Array<{ name: string; state?: string }>;
+  archivedLogs?: string;
+  message?: string;
+  error?: string;
+}
+
+/** lifecycle/src/server/models/WebhookInvocations.ts */
+export interface WebhookInvocation {
+  id?: number;
+  runUUID: string;
+  name: string;
+  type: string;
+  status: string;
+  metadata?: Record<string, unknown> | null;
+  owner?: string | null;
+  yamlConfig?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /** Build statuses (lifecycle/src/shared/constants.ts) */
