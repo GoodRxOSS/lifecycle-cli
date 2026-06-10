@@ -215,6 +215,8 @@ lfc services redeploy &lt;build-uuid&gt; &lt;name&gt;
 lfc services enable|disable &lt;build-uuid&gt; &lt;name&gt;
 lfc services set-branch &lt;build-uuid&gt; &lt;name&gt; &lt;branch-or-url&gt;
 
+lfc schema validate [path] [--repo org/repo --branch b]   # Phase 3: local config validation
+
 lfc sites list [--mine]
 lfc sites create &lt;file.zip|file.html|dir&gt; [--name n]   # dirs auto-zipped; prints id + url
 lfc sites get|delete|extend &lt;siteId&gt;
@@ -288,7 +290,7 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
   </tbody>
 </table>
 <p><strong>Design notes:</strong> the log websocket lives on the app host (not <code>/api/v2</code>, so it is outside the auth middleware today — flagged as a core-app follow-up); Node ≥ 22 ships a native <code>WebSocket</code> client so no new dependency is needed. Interactive selection uses @clack/prompts and is TTY-only; every interactive path keeps flag equivalents (<code>services enable/disable/set-branch</code>) so agents are never blocked.</p>
-<p><strong>Out of scope for Phase 2</strong> (exists in UI, deliberately deferred): repository/global config browsing (<code>/api/v2/repositories</code>, config metadata), AI/agent-session features, schema validation endpoint. These are admin/config surfaces rather than per-build workflows.</p>
+<p><strong>Out of scope for Phase 2</strong> (exists in UI, deliberately deferred): repository/global config browsing (<code>/api/v2/repositories</code>, config metadata), AI/agent-session features. Schema validation was promoted to Phase 3 below.</p>
 <div class="card">
   <p><strong>Phase 2 e2e results (2026-06-09, prod, build <code>summer-bush-968349</code>):</strong></p>
   <ul>
@@ -304,12 +306,35 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
   </ul>
 </div>
 
-<h2 id="followups">12. Follow-ups <span class="pill followup">tracked</span></h2>
+<h2 id="phase3">12. Phase 3 — Schema Validation <span class="pill followup">shipped</span></h2>
+<p>Goal: let users <em>and agents</em> validate a <code>lifecycle.yaml</code> locally before pushing — in the current directory or at a given path — with the exact checks the server runs, plus per-field error details the server's endpoint doesn't return.</p>
+<table>
+  <thead><tr><th>#</th><th>Feature</th><th>Command</th><th>How</th></tr></thead>
+  <tbody>
+    <tr><td>P3-1</td><td>Local validation with auto-detect</td><td><code>lfc schema validate [path]</code></td><td>Auto-detects <code>lifecycle.yaml</code> / <code>lifecycle.yml</code> / <code>.lifecycle.yaml</code> / <code>.lifecycle.yml</code> (mirrors the server's <code>LIFECYCLE_FILE_NAME_REGEX</code>); path may be a file or a directory. Offline, no auth.</td></tr>
+    <tr><td>P3-2</td><td>Per-field error report</td><td>pretty + <code>--json</code></td><td><code>yaml.load</code> then JSON-schema validation; errors as <code>{path, message}</code> (e.g. <code>services[0].helm.branchName: is not of a type(s) string</code>). Exit 0 valid / 1 invalid / 3 no config found.</td></tr>
+    <tr><td>P3-3</td><td>Server-side check of a pushed branch</td><td><code>lfc schema validate --repo org/repo --branch b</code></td><td><code>GET /api/v2/schema/validate?repo&amp;branch</code> (returns <code>{valid}</code> only — the endpoint fetches the YAML from GitHub).</td></tr>
+  </tbody>
+</table>
+<p><strong>Fidelity to the server:</strong> the CLI bundles the server's generated <code>1.0.0.json</code> schema (from <code>src/server/lib/jsonschema/schemas/</code>, itself generated from the <code>yamlSchemas/schema_1_0_0</code> TS source) and validates with the same <code>jsonschema</code> npm package, the same options (<code>allowUnknownAttributes: false</code>, <code>nestedErrors: true</code>) and the same four custom formats (<code>webhookType</code>, <code>webhookState</code>, <code>diskAccessMode</code>, <code>capacityType</code>) registered in <code>yamlConfigValidator.ts</code>. The <code>schema100Version</code> format has no handler server-side either, so it is intentionally unchecked. One divergence handled: the schema <em>generator</em> annotates the JSON with non-standard <code>comment</code> keys that the server never validates against (it uses the TS object) — the CLI strips them at load, otherwise the validator rejects its own schema. Version dispatch mirrors <code>YamlConfigValidator.validate()</code>: every version routes to 1.0.0 today.</p>
+<div class="card">
+  <p><strong>Phase 3 e2e results (2026-06-09, local + prod API):</strong></p>
+  <ul>
+    <li>✅ Real config (GoodRx/good-claw <code>lifecycle.yaml</code>, 151 lines, helm + docker services): valid, exit 0 — via explicit path, cwd auto-detect, <code>.lifecycle.yml</code> dotfile variant, and <code>--json</code>.</li>
+    <li>✅ Broken copy (typo'd <code>autoDeplo</code>, <code>branchName</code> as array): 6 errors with exact property paths, exit 1.</li>
+    <li>✅ Empty directory: "No lifecycle config found" listing the candidates, exit 3.</li>
+    <li>✅ Remote: PR branch and <code>main</code> of GoodRx/good-claw → valid (exit 0); nonexistent branch → invalid (exit 1, with a hint to run locally for details); <code>--repo</code> without <code>--branch</code> errors.</li>
+    <li>✅ Unit suite extended to 29 tests (valid config, additionalProperties, nested paths, webhook custom format, empty file, YAML syntax error, file-detection order).</li>
+  </ul>
+</div>
+
+<h2 id="followups">13. Follow-ups <span class="pill followup">tracked</span></h2>
 <ul id="followup-list">
   <li>Verify with Okta admin that no per-app policy blocks the brokered CLI login (no redirect-URI change is expected to be needed, since Okta only ever redirects to the Keycloak broker endpoint).</li>
   <li>npm publish + Homebrew tap for distribution.</li>
   <li>Commit the <code>helm-charts</code> additions (<code>lifecycle-keycloak</code> values + realm template <code>lifecycle-cli</code> client block) — currently uncommitted in that repo, pending the user's review.</li>
   <li>Core app: the <code>/api/logs/stream</code> websocket upgrade is not behind the <code>/api/v2</code> auth middleware — consider requiring a bearer token on the upgrade request when ENABLE_AUTH is on.</li>
+  <li>Keep <code>src/lib/schema/lifecycle-1.0.0.json</code> in sync with the core app's generated schema (re-copy from <code>lifecycle/src/server/lib/jsonschema/schemas/</code> when the schema changes; consider fetching it at build time).</li>
 </ul>
 
 <footer>lifecycle-cli &middot; Apache-2.0 &middot; This document is the single source of truth for plan ↔ implementation drift.</footer>

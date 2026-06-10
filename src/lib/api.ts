@@ -203,6 +203,14 @@ export class ApiClient {
     return env.data;
   }
 
+  /** Server-side schema validation of the lifecycle config on a GitHub branch. */
+  async validateSchema(repo: string, branch: string): Promise<{ valid: boolean }> {
+    const env = await this.request<{ valid: boolean }>('GET', '/api/v2/schema/validate', {
+      query: { repo, branch },
+    });
+    return env.data as { valid: boolean };
+  }
+
   // --- sites ---
 
   async listSites(params: { page?: number; limit?: number; user?: string }): Promise<ListResult<Site>> {

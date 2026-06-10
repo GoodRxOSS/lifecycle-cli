@@ -4,6 +4,7 @@ import { registerAuthCommands } from './commands/auth.js';
 import { registerBuildsCommands } from './commands/builds.js';
 import { registerConfigCommands } from './commands/config.js';
 import { registerPodsCommands } from './commands/pods.js';
+import { registerSchemaCommands } from './commands/schema.js';
 import { registerServicesCommands } from './commands/services.js';
 import { registerSitesCommands } from './commands/sites.js';
 
@@ -23,6 +24,7 @@ registerConfigCommands(program);
 registerBuildsCommands(program);
 registerServicesCommands(program);
 registerPodsCommands(program);
+registerSchemaCommands(program);
 registerSitesCommands(program);
 
 program.parseAsync().catch((err: Error) => {
