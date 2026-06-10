@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run type check
+        run: pnpm typecheck
+
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: CLI starts and prints help
+        run: node dist/index.js --help
+
+      - name: No vendor URLs in source
+        # this repo's own GitHub URL is the one allowed mention — no deployment URLs may ship
+        run: |
+          if grep -rni "goodrx" src/ | grep -vi "github.com/goodrxoss/lifecycle-cli"; then
+            echo "::error::Vendor-specific URLs/names found in src/ — the published CLI must ship config-free."
+            exit 1
+          fi

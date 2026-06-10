@@ -1,0 +1,53 @@
+{
+  "name": "lfc-cli",
+  "version": "0.1.2",
+  "description": "Command-line interface for Lifecycle — preview environments, services, and static sites",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GoodRxOSS/lifecycle-cli.git"
+  },
+  "keywords": [
+    "lifecycle",
+    "preview-environments",
+    "cli",
+    "kubernetes"
+  ],
+  "packageManager": "pnpm@9.15.0",
+  "bin": {
+    "lfc": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "archiver": "^7.0.1",
+    "commander": "^14.0.0",
+    "js-yaml": "^4.2.0",
+    "jsonschema": "^1.5.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.3",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.0.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}
