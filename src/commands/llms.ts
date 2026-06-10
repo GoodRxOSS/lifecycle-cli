@@ -94,8 +94,10 @@ For --device (and "lfc init --device"), relay the printed URL and code to the us
 verbatim and wait — the command blocks until they approve on another device.
 
 Tokens are cached per profile under ~/.config/lifecycle-cli/tokens/ and refresh
-automatically. A login is only needed again when the SSO session itself expires
-(typically ~12h). Auth-less deployments (authEnabled=false) skip all of this.
+automatically. The CLI requests the offline_access scope, so the cached session
+stays valid as long as the CLI is used at least once within the realm's Offline
+Session Idle timeout (Keycloak default: 30 days). "lfc logout" revokes it.
+Auth-less deployments (authEnabled=false) skip all of this.
 
 ## Command reference
 
