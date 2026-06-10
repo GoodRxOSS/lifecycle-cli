@@ -1,5 +1,5 @@
 {
-  "name": "lifecycle-cli",
+  "name": "lfc-cli",
   "version": "0.1.0",
   "description": "Command-line interface for Lifecycle — preview environments, services, and static sites",
   "license": "Apache-2.0",
