@@ -32,7 +32,7 @@ function serviceRows(build: Build): string[][] {
 
 function summarizeServices(deploys: Array<{ status: string; active: boolean }>): string {
   const active = deploys.filter((d) => d.active);
-  const deployed = active.filter((d) => d.status === 'deployed').length;
+  const deployed = active.filter((d) => d.status === 'ready' || d.status === 'deployed').length;
   const failed = active.filter((d) => d.status.includes('error') || d.status.includes('failed')).length;
   let summary = `${deployed}/${active.length}`;
   if (failed > 0) summary += pc.red(` (${failed} failed)`);
