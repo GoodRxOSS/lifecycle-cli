@@ -19,7 +19,8 @@ export interface Ctx {
 export function buildCtx(cmd: Command): Ctx {
   const opts = cmd.optsWithGlobals<{ json?: boolean; profile?: string; apiUrl?: string; quiet?: boolean }>();
   const config = loadConfig();
-  const { name, profile } = resolveProfile(config, opts.profile);
+  const apiUrlOverride = opts.apiUrl || process.env.LIFECYCLE_API_URL;
+  const { name, profile } = resolveProfile(config, opts.profile, apiUrlOverride);
   return {
     config,
     profileName: name,

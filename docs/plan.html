@@ -64,6 +64,9 @@
   <li><a href="#progress">Implementation Progress</a></li>
   <li><a href="#deviations">Deviations &amp; Decisions Made During Implementation</a></li>
   <li><a href="#testing">Testing Strategy &amp; Results</a></li>
+  <li><a href="#phase2">Phase 2 — Feature Extension</a></li>
+  <li><a href="#phase3">Phase 3 — Schema Validation</a></li>
+  <li><a href="#phase4">Phase 4 — Publishing &amp; Deployment</a></li>
   <li><a href="#followups">Follow-ups</a></li>
 </ol>
 </div>
@@ -328,10 +331,34 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
   </ul>
 </div>
 
-<h2 id="followups">13. Follow-ups <span class="pill followup">tracked</span></h2>
+<h2 id="phase4">13. Phase 4 — Publishing &amp; Deployment <span class="pill followup">shipped</span></h2>
+<p>Goal: publish the CLI as a clean, vendor-neutral npm package — no company URLs in the shipped artifact — with the repo, CI, and a first-time setup path for internal users.</p>
+<table>
+  <thead><tr><th>#</th><th>Item</th><th>Decision / implementation</th></tr></thead>
+  <tbody>
+    <tr><td>P4-1</td><td>GitHub repo</td><td><code>GoodRxOSS/lifecycle-cli</code>, <strong>internal</strong> visibility (same as lifecycle-ui). Collaborators mirror lifecycle core: vmelikyan (admin); binlab, levontikoyan, MarcosMdo (maintain); iceycake (read).</td></tr>
+    <tr><td>P4-2</td><td>npm package</td><td><code>lifecycle-cli</code> on public npm (binary stays <code>lfc</code>; the bare <code>lfc</code> npm name was parked by someone else in 2017). Public package is fine because the artifact ships zero vendor data.</td></tr>
+    <tr><td>P4-3</td><td>PR checks</td><td><code>.github/workflows/ci.yaml</code> on PRs + pushes to main: typecheck, unit tests, build, <code>--help</code> smoke run, and a <strong>vendor-URL guard</strong> that fails CI if "goodrx" appears anywhere in <code>src/</code>.</td></tr>
+    <tr><td>P4-4</td><td>Publish flow</td><td><code>.github/workflows/release.yaml</code> on GitHub Release published: full checks, version synced from the <code>v*</code> tag, <code>pnpm publish</code> with the <code>NPM_TOKEN</code> repo secret. Pre-releases publish under the <code>next</code> dist-tag.</td></tr>
+    <tr><td>P4-5</td><td>Config-free shipping</td><td>Removed the baked-in <code>DEFAULT_PROFILE</code> (GoodRx URLs) from <code>src/lib/config.ts</code>. Fresh install has an empty config; API commands error with "Run <code>lfc init</code>". <code>--api-url</code>/<code>LIFECYCLE_API_URL</code> still work ad hoc with no config (auth-less). <code>config add-profile</code> now requires <code>--api-url</code> (+ <code>--issuer</code> unless <code>--no-auth</code>).</td></tr>
+    <tr><td>P4-6</td><td>First-time setup</td><td>New <code>lfc init</code>: interactive prompts on a TTY (app URL → UI URL → auth → issuer) or flags for scripts; probes the API URL for reachability, saves the profile, then chains straight into SSO login (<code>--no-login</code>, <code>--device</code> escape hatches). An explicit <code>--issuer</code> implies auth without prompting.</td></tr>
+    <tr><td>P4-7</td><td>Internal setup script</td><td><code>lfc-setup.sh</code> pins the GoodRx URLs and runs <code>npm i -g lifecycle-cli && lfc init … --force</code> (login included; <code>--device</code> passthrough). Deliberately <strong>not</strong> in this repo — it lives with the team (currently <code>~/Downloads/lfc-setup.sh</code>) so the repo/package stay vendor-neutral.</td></tr>
+  </tbody>
+</table>
+<div class="card">
+  <p><strong>Phase 4 verification (2026-06-10):</strong></p>
+  <ul>
+    <li>✅ Fresh config dir: <code>lfc builds list</code> → "No configuration found. Run <code>lfc init</code>…" (exit 1); no goodrx string anywhere in <code>src/</code> (CI-enforced).</li>
+    <li>✅ <code>lfc init</code> non-interactive: saved profile + probe showed "reachable (auth enforced)" against prod; duplicate-profile guard (<code>--force</code> to overwrite), missing-issuer error, <code>--no-auth</code> local profile all verified.</li>
+    <li>✅ Ad-hoc <code>--api-url</code> with zero config reached the API (clean 401 from prod, as expected unauthenticated).</li>
+    <li>✅ Unit suite 31 tests (config tests rewritten for the empty-default behavior).</li>
+  </ul>
+</div>
+
+<h2 id="followups">14. Follow-ups <span class="pill followup">tracked</span></h2>
 <ul id="followup-list">
   <li>Verify with Okta admin that no per-app policy blocks the brokered CLI login (no redirect-URI change is expected to be needed, since Okta only ever redirects to the Keycloak broker endpoint).</li>
-  <li>npm publish + Homebrew tap for distribution.</li>
+  <li>Create the <code>NPM_TOKEN</code> repo secret (granular automation token on npmjs.com) and publish the first GitHub Release (<code>v0.1.0</code>) to trigger the npm publish. Homebrew tap remains a later option.</li>
   <li>Commit the <code>helm-charts</code> additions (<code>lifecycle-keycloak</code> values + realm template <code>lifecycle-cli</code> client block) — currently uncommitted in that repo, pending the user's review.</li>
   <li>Core app: the <code>/api/logs/stream</code> websocket upgrade is not behind the <code>/api/v2</code> auth middleware — consider requiring a bearer token on the upgrade request when ENABLE_AUTH is on.</li>
   <li>Keep <code>src/lib/schema/lifecycle-1.0.0.json</code> in sync with the core app's generated schema (re-copy from <code>lifecycle/src/server/lib/jsonschema/schemas/</code> when the schema changes; consider fetching it at build time).</li>

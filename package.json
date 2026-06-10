@@ -4,6 +4,17 @@
   "description": "Command-line interface for Lifecycle — preview environments, services, and static sites",
   "license": "Apache-2.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GoodRxOSS/lifecycle-cli.git"
+  },
+  "keywords": [
+    "lifecycle",
+    "preview-environments",
+    "cli",
+    "kubernetes"
+  ],
+  "packageManager": "pnpm@9.15.0",
   "bin": {
     "lfc": "./dist/index.js"
   },
@@ -20,8 +31,7 @@
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint src"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@clack/prompts": "^0.11.0",

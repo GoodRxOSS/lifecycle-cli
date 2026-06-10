@@ -1,6 +1,6 @@
 # lifecycle-cli (`lfc`)
 
-Command-line interface for [Lifecycle](https://github.com/GoodRx/lifecycle) — view and manage preview environments (builds), redeploy services, and host static sites, straight from your terminal. Built for humans *and* agents: every command supports `--json`.
+Command-line interface for [Lifecycle](https://github.com/GoodRxOSS/lifecycle) — view and manage preview environments (builds), redeploy services, and host static sites, straight from your terminal. Built for humans *and* agents: every command supports `--json`.
 
 ```
 $ lfc builds list --mine
@@ -11,18 +11,34 @@ brave-falcon-7       building  acme/api#88               fix/timeout    jdoe    
 
 ## Installation
 
-Requires [mise](https://mise.jdx.dev) (or Node ≥ 20 + pnpm 9 managed yourself).
+Requires Node ≥ 20.
 
 ```bash
-git clone <this repo> && cd lifecycle-cli
-mise install          # pins node 24 + pnpm 9
-pnpm install
-pnpm build
-pnpm link --global    # puts `lfc` on your PATH
+npm install -g lifecycle-cli
 lfc --help
 ```
 
-> Publishing to npm / Homebrew is a planned follow-up; for now `pnpm link --global` is the supported install.
+From source (development): clone this repo, `mise install` (pins node 24 + pnpm 9), `pnpm install && pnpm build && pnpm link --global`.
+
+## First-time setup
+
+The CLI ships with **no deployment URLs baked in** — point it at your Lifecycle deployment once:
+
+```bash
+lfc init              # interactive: app URL, UI URL, auth settings → then logs you in
+```
+
+Or non-interactively (scripts, dotfiles, onboarding docs):
+
+```bash
+lfc init \
+  --api-url https://app.lifecycle.example.com \
+  --ui-url  https://ui.lifecycle.example.com \
+  --issuer  https://auth.lifecycle.example.com/realms/lifecycle
+lfc init --api-url http://localhost:8080 --no-auth --name local   # auth-less deployment
+```
+
+`init` verifies the URL is reachable, writes the profile to `~/.config/lifecycle-cli/config.json`, and (when auth is on) starts the SSO login — `--no-login` to skip, `--device` for headless machines. One-off usage without any config also works: `lfc --api-url http://localhost:8080 builds list`.
 
 ## Authentication
 
@@ -41,7 +57,7 @@ lfc logout
 
 ## Profiles
 
-The default profile targets the production deployment. Manage profiles with:
+Each profile points at one Lifecycle deployment (`lfc init` creates the first one). Manage them with:
 
 ```bash
 lfc config list
@@ -133,7 +149,7 @@ Upload a ZIP, a single HTML file, or a directory (auto-zipped) and get a stable 
 ```bash
 lfc sites create ./report.html --name "perf report"
 # ✓ Created site a1b2c3d4e5 (perf report)
-# https://a1b2c3d4e5.sites.lfc.goodrx.com
+# https://a1b2c3d4e5.sites.lifecycle.example.com
 
 lfc sites create ./dist                  # whole directory
 lfc sites list --mine

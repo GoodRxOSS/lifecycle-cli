@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { registerAuthCommands } from './commands/auth.js';
 import { registerBuildsCommands } from './commands/builds.js';
 import { registerConfigCommands } from './commands/config.js';
+import { registerInitCommand } from './commands/init.js';
 import { registerPodsCommands } from './commands/pods.js';
 import { registerSchemaCommands } from './commands/schema.js';
 import { registerServicesCommands } from './commands/services.js';
@@ -19,6 +20,7 @@ program
   .option('--api-url <url>', 'override the Lifecycle API base URL (also via LIFECYCLE_API_URL)')
   .option('-q, --quiet', 'suppress informational output');
 
+registerInitCommand(program);
 registerAuthCommands(program);
 registerConfigCommands(program);
 registerBuildsCommands(program);
