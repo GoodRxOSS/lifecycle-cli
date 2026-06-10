@@ -233,7 +233,7 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
   <li class="done">API client + builds/services commands (incl. watch)</li>
   <li class="done">Sites commands (zip/dir upload)</li>
   <li class="done">Docs (README, CONTRIBUTING, LICENSE)</li>
-  <li>Integration/e2e test pass against prod (blocked on one interactive <code>lfc login</code> by the user — see Deviations #4)</li>
+  <li class="done">Integration/e2e test pass against prod — full pass on 2026-06-09 (see Testing Results)</li>
 </ul>
 
 <h2 id="deviations">9. Deviations &amp; Decisions Made During Implementation</h2>
@@ -257,7 +257,19 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
   <p><strong>Unit (vitest):</strong> ✅ 14/14 passing — ANSI-aware table alignment, duration/byte formatting, config round-trip &amp; profile resolution, token file 0600 permissions, PKCE S256 verifier/challenge correctness, JWT payload decoding.</p>
   <p><strong>Build &amp; static checks:</strong> ✅ <code>pnpm typecheck</code> clean (strict, <code>noUncheckedIndexedAccess</code>); <code>pnpm build</code> produces a single-file executable <code>dist/index.js</code> (~1.04&nbsp;MB); all command help screens verified.</p>
   <p><strong>Keycloak client smoke test:</strong> ✅ device-authorization request against the live realm returns a valid <code>verification_uri_complete</code> for the new <code>lifecycle-cli</code> client (PKCE-on-device-flow behavior discovered and handled here). Helm chart addition verified with <code>helm template</code>.</p>
-  <p><strong>E2E against prod:</strong> ⏳ pending one interactive <code>lfc login</code> by the user (browser SSO through Okta→Keycloak). Planned pass: <code>whoami</code>, <code>builds list/get</code>, <code>services list</code>, sites create→get→update→extend→delete roundtrip, <code>builds status --watch</code>. Results will be recorded here.</p>
+  <p><strong>E2E against prod (2026-06-09, build <code>summer-bush-968349</code> / GoodRx/good-claw#402):</strong> ✅ full pass.</p>
+  <ul>
+    <li>✅ <strong>SSO login</strong>: interactive <code>lfc login</code> through Okta→Keycloak PKCE loopback; <code>whoami</code> shows email, GitHub username, roles, token expiry; refresh token cached.</li>
+    <li>✅ <strong>builds list</strong> (<code>--search</code>, <code>-n</code>) and <strong>builds get</strong> (pretty + <code>--json</code>): status, PR, branch, per-service table with public links.</li>
+    <li>✅ <strong>services list</strong>: all 4 services with status/branch/URL/sha.</li>
+    <li>✅ <strong>env overrides round-trip</strong>: <code>env set</code> (2 keys) → <code>env get --json</code> → <code>env unset</code> (merge semantics verified). After redeploy, <code>kubectl</code> confirmed <code>LFC_E2E_TEST=hello</code> present in the live k8s Deployment spec — the override path works end-to-end into the cluster. Cleaned up afterwards.</li>
+    <li>✅ <strong>services redeploy</strong> (<code>good-claw-web</code>): accepted; backend rebuilds the dependency chain (all 4 services cycled cloning→building→deploying→ready).</li>
+    <li>✅ <strong>builds status --watch</strong>: non-TTY snapshot mode streamed transitions for ~2.5&nbsp;min and exited 0 on <code>deployed</code>.</li>
+    <li>✅ <strong>sites roundtrip</strong>: directory create → URL served v1 (HTTP 200) → <code>update</code> → URL served v2 → <code>list --mine</code> → <code>delete --yes</code> → <code>get</code> exits 3 on 404 and the URL returns 404.</li>
+    <li>ℹ️ <strong>sites extend</strong>: server returned 400 "TTL is disabled for hosted sites" — expected, this deployment disables site TTL (<code>expiresAt: null</code>); the CLI surfaced the error + request id cleanly with exit 1.</li>
+    <li>✅ <strong>error/exit codes</strong>: not-logged-in → exit 4; 404 → exit 3; watch success → 0.</li>
+    <li>🐛 <strong>Fixed during e2e</strong>: builds list service counter showed <code>0/4</code> on healthy builds — it compared deploy status to <code>deployed</code>, but per-deploy terminal success is <code>ready</code>. One-line fix; re-verified (<code>4/4</code>).</li>
+  </ul>
 </div>
 
 <h2 id="followups">11. Follow-ups <span class="pill followup">tracked</span></h2>
