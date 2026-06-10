@@ -352,13 +352,15 @@ lfc sites update &lt;siteId&gt; &lt;file|dir&gt;
     <li>✅ <code>lfc init</code> non-interactive: saved profile + probe showed "reachable (auth enforced)" against prod; duplicate-profile guard (<code>--force</code> to overwrite), missing-issuer error, <code>--no-auth</code> local profile all verified.</li>
     <li>✅ Ad-hoc <code>--api-url</code> with zero config reached the API (clean 401 from prod, as expected unauthenticated).</li>
     <li>✅ Unit suite 31 tests (config tests rewritten for the empty-default behavior).</li>
+    <li>✅ <strong>Published (2026-06-10):</strong> <code>lfc-cli@0.1.0</code> live on npm via the release workflow on the <code>v0.1.0</code> GitHub Release. Two npm-token iterations were needed: a token without 2FA-bypass → 403; a token that couldn't create new packages → 404 on first publish; a granular token with read/write on <em>all packages</em> + bypass-2FA succeeded.</li>
+    <li>✅ <strong>setup.sh e2e:</strong> <code>lfc-setup.sh --no-login</code> installed <code>lfc-cli@latest</code> from npm, probed prod ("reachable, auth enforced"), wrote the profile. The npm-installed binary then passed <code>whoami</code> (cached SSO tokens), <code>builds list</code>, and <code>schema validate --repo/--branch</code> against prod. Ready to share with peers.</li>
   </ul>
 </div>
 
 <h2 id="followups">14. Follow-ups <span class="pill followup">tracked</span></h2>
 <ul id="followup-list">
   <li>Verify with Okta admin that no per-app policy blocks the brokered CLI login (no redirect-URI change is expected to be needed, since Okta only ever redirects to the Keycloak broker endpoint).</li>
-  <li>Create the <code>NPM_TOKEN</code> repo secret (granular automation token on npmjs.com) and publish the first GitHub Release (<code>v0.1.0</code>) to trigger the npm publish. Homebrew tap remains a later option.</li>
+  <li><s>Create the <code>NPM_TOKEN</code> repo secret and publish the first GitHub Release</s> — done 2026-06-10, <code>lfc-cli@0.1.0</code> on npm. Homebrew tap remains a later option; consider re-scoping the npm token to just <code>lfc-cli</code> now that the package exists.</li>
   <li>Commit the <code>helm-charts</code> additions (<code>lifecycle-keycloak</code> values + realm template <code>lifecycle-cli</code> client block) — currently uncommitted in that repo, pending the user's review.</li>
   <li>Core app: the <code>/api/logs/stream</code> websocket upgrade is not behind the <code>/api/v2</code> auth middleware — consider requiring a bearer token on the upgrade request when ENABLE_AUTH is on.</li>
   <li>Keep <code>src/lib/schema/lifecycle-1.0.0.json</code> in sync with the core app's generated schema (re-copy from <code>lifecycle/src/server/lib/jsonschema/schemas/</code> when the schema changes; consider fetching it at build time).</li>
