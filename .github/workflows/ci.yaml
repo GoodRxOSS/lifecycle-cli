@@ -39,8 +39,9 @@ jobs:
         run: node dist/index.js --help
 
       - name: No vendor URLs in source
+        # this repo's own GitHub URL is the one allowed mention — no deployment URLs may ship
         run: |
-          if grep -rni "goodrx" src/; then
+          if grep -rni "goodrx" src/ | grep -vi "github.com/goodrxoss/lifecycle-cli"; then
             echo "::error::Vendor-specific URLs/names found in src/ — the published CLI must ship config-free."
             exit 1
           fi

@@ -161,6 +161,7 @@ lfc sites delete a1b2c3d4e5 --yes
 
 ## For agents / scripting
 
+- `lfc llms` prints a self-contained, llms.txt-style instruction document (setup, auth, command surface, recipes, troubleshooting) — point your agent at it instead of fetching docs from the web. Platform-level reference lives at <https://uselifecycle.com/llms.txt>.
 - Add `--json` to any command for clean, stable JSON on stdout (human chatter goes to stderr). `LFC_JSON=1` does the same globally.
 - Non-interactive safety: destructive commands (`destroy`, `delete`) require `--yes` when stdin is not a TTY.
 - Exit codes: `0` success · `1` failure/API error · `2` watch timeout · `3` not found · `4` auth error.
