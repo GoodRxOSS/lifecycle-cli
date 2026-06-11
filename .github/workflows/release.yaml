@@ -33,14 +33,14 @@ jobs:
       - name: Run unit tests
         run: pnpm test
 
-      - name: Build
-        run: pnpm build
-
       - name: Sync package version from release tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "Publishing version $VERSION"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Build
+        run: pnpm build
 
       - name: Publish
         run: |
