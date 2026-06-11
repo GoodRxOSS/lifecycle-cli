@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { registerAuthCommands } from './commands/auth.js';
 import { registerBuildsCommands } from './commands/builds.js';
 import { registerConfigCommands } from './commands/config.js';
+import { registerDoctorCommand } from './commands/doctor.js';
 import { registerInitCommand } from './commands/init.js';
 import { registerLlmsCommand } from './commands/llms.js';
 import { registerPodsCommands } from './commands/pods.js';
@@ -26,6 +27,7 @@ program
 registerInitCommand(program);
 registerAuthCommands(program);
 registerConfigCommands(program);
+registerDoctorCommand(program);
 registerBuildsCommands(program);
 registerServicesCommands(program);
 registerPodsCommands(program);

@@ -46,6 +46,6 @@ Unit tests run offline. For integration testing, log in (`lfc login`) against yo
 
 ## Releasing (manual for now)
 
-1. Bump `version` in `package.json` (and the `.version()` in `src/index.ts`).
+1. Bump `version` in `package.json` and create a matching release tag (for example `v0.2.1`).
 2. `pnpm build && pnpm test`.
 3. Tag and push. npm publish / Homebrew tap are tracked follow-ups.
