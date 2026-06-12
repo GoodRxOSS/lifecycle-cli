@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 
 import * as clack from '@clack/prompts';
 import { Command } from 'commander';
@@ -9,33 +8,25 @@ import { decodeJwt } from '../lib/auth.js';
 import { loadTokens } from '../lib/config.js';
 import { runAction, type Ctx } from '../lib/context.js';
 import { formatAge, formatBytes, link, printJson, renderTable, statusColor } from '../lib/output.js';
-import { zipDirectory } from '../lib/zip.js';
+import { prepareSiteUpload, type PreparedSiteUpload } from '../lib/zip.js';
 
 /** Build the multipart form for a site upload from a zip, html file, or directory. */
-async function uploadForm(target: string, name?: string): Promise<FormData> {
-  const stat = fs.statSync(target);
-  let content: Buffer;
-  let fileName: string;
-  let type: string;
-
-  if (stat.isDirectory()) {
-    content = await zipDirectory(target);
-    fileName = `${path.basename(path.resolve(target))}.zip`;
-    type = 'application/zip';
-  } else {
-    const ext = path.extname(target).toLowerCase();
-    if (!['.zip', '.html', '.htm'].includes(ext)) {
-      throw new Error(`Unsupported file type "${ext}" — upload a .zip, .html file, or a directory`);
-    }
-    content = fs.readFileSync(target);
-    fileName = path.basename(target);
-    type = ext === '.zip' ? 'application/zip' : 'text/html';
-  }
-
+async function uploadForm(upload: PreparedSiteUpload, name?: string): Promise<FormData> {
   const form = new FormData();
-  form.append('file', new Blob([new Uint8Array(content)], { type }), fileName);
+  form.append('file', await fs.openAsBlob(upload.filePath, { type: upload.contentType }), upload.fileName);
   if (name) form.append('name', name);
   return form;
+}
+
+async function prepareUpload(ctx: Ctx, target: string): Promise<PreparedSiteUpload> {
+  let config;
+  try {
+    config = await ctx.api.getSitesConfig();
+  } catch {
+    throw new Error('Could not load sites lifecycle. Try again later.');
+  }
+
+  return prepareSiteUpload(target, config);
 }
 
 function userEmail(ctx: Ctx): string | undefined {
@@ -106,9 +97,14 @@ export function registerSitesCommands(program: Command): void {
     .option('--name <name>', 'display name for the site')
     .action(
       runAction(async (ctx, target: string, opts: { name?: string }) => {
-        const form = await uploadForm(target, opts.name);
-        const site = await ctx.api.createSite(form);
-        printSite(ctx, site, 'Created');
+        const upload = await prepareUpload(ctx, target);
+        try {
+          const form = await uploadForm(upload, opts.name);
+          const site = await ctx.api.createSite(form);
+          printSite(ctx, site, 'Created');
+        } finally {
+          await upload.cleanup();
+        }
       })
     );
 
@@ -142,9 +138,14 @@ export function registerSitesCommands(program: Command): void {
     .description('Replace a site\'s content with a new .zip, .html file, or directory')
     .action(
       runAction(async (ctx, siteId: string, target: string) => {
-        const form = await uploadForm(target);
-        const site = await ctx.api.replaceSiteContent(siteId, form);
-        printSite(ctx, site, 'Updated');
+        const upload = await prepareUpload(ctx, target);
+        try {
+          const form = await uploadForm(upload);
+          const site = await ctx.api.replaceSiteContent(siteId, form);
+          printSite(ctx, site, 'Updated');
+        } finally {
+          await upload.cleanup();
+        }
       })
     );
 

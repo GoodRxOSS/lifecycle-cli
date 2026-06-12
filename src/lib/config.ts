@@ -20,6 +20,8 @@ export interface ConfigFile {
 }
 
 export const DEFAULT_PROFILE_NAME = 'default';
+export const PRIVATE_DIR_MODE = 0o700;
+export const PRIVATE_FILE_MODE = 0o600;
 
 /** Conventional Keycloak client id for Lifecycle deployments; overridable per profile. */
 export const DEFAULT_CLIENT_ID = 'lifecycle-cli';
@@ -28,8 +30,26 @@ export function configDir(): string {
   return process.env.LFC_CONFIG_DIR || path.join(os.homedir(), '.config', 'lifecycle-cli');
 }
 
-function configPath(): string {
+export function configPath(): string {
   return path.join(configDir(), 'config.json');
+}
+
+export function tokensDir(): string {
+  return path.join(configDir(), 'tokens');
+}
+
+export function tokensPath(profileName: string): string {
+  return path.join(tokensDir(), `${profileName}.json`);
+}
+
+export function ensurePrivateDir(dir: string): void {
+  fs.mkdirSync(dir, { recursive: true, mode: PRIVATE_DIR_MODE });
+  fs.chmodSync(dir, PRIVATE_DIR_MODE);
+}
+
+export function writePrivateJson(filePath: string, value: unknown): void {
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, { mode: PRIVATE_FILE_MODE });
+  fs.chmodSync(filePath, PRIVATE_FILE_MODE);
 }
 
 export function loadConfig(): ConfigFile {
@@ -48,8 +68,8 @@ export function loadConfig(): ConfigFile {
 }
 
 export function saveConfig(config: ConfigFile): void {
-  fs.mkdirSync(configDir(), { recursive: true });
-  fs.writeFileSync(configPath(), `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  ensurePrivateDir(configDir());
+  writePrivateJson(configPath(), config);
 }
 
 export function resolveProfile(config: ConfigFile, name?: string, apiUrlOverride?: string): { name: string; profile: Profile } {
@@ -79,14 +99,6 @@ export interface TokenSet {
   expiresAt: number;
 }
 
-function tokensDir(): string {
-  return path.join(configDir(), 'tokens');
-}
-
-function tokensPath(profileName: string): string {
-  return path.join(tokensDir(), `${profileName}.json`);
-}
-
 export function loadTokens(profileName: string): TokenSet | null {
   try {
     return JSON.parse(fs.readFileSync(tokensPath(profileName), 'utf8')) as TokenSet;
@@ -96,8 +108,9 @@ export function loadTokens(profileName: string): TokenSet | null {
 }
 
 export function saveTokens(profileName: string, tokens: TokenSet): void {
-  fs.mkdirSync(tokensDir(), { recursive: true, mode: 0o700 });
-  fs.writeFileSync(tokensPath(profileName), `${JSON.stringify(tokens, null, 2)}\n`, { mode: 0o600 });
+  ensurePrivateDir(configDir());
+  ensurePrivateDir(tokensDir());
+  writePrivateJson(tokensPath(profileName), tokens);
 }
 
 export function clearTokens(profileName: string): boolean {

@@ -11,6 +11,8 @@ import type {
   PodInfo,
   ServiceOverrideState,
   Site,
+  SitesCliConfig,
+  SitesConfigCacheResponse,
   WebhookInvocation,
 } from './types.js';
 
@@ -73,13 +75,20 @@ export class ApiClient {
     }
 
     const text = await res.text();
-    let envelope: ApiEnvelope<T>;
+    let parsed: unknown;
     try {
-      envelope = JSON.parse(text) as ApiEnvelope<T>;
+      parsed = JSON.parse(text);
     } catch {
       if (!res.ok) throw new ApiError(`${res.status} ${res.statusText}: ${text.slice(0, 300)}`, res.status);
       throw new ApiError(`Unexpected non-JSON response from ${path}`, res.status);
     }
+
+    const envelope =
+      parsed &&
+      typeof parsed === 'object' &&
+      ('request_id' in parsed || 'data' in parsed || 'error' in parsed)
+        ? (parsed as ApiEnvelope<T>)
+        : ({ request_id: '', data: parsed as T, error: null } satisfies ApiEnvelope<T>);
 
     if (!res.ok || envelope.error) {
       throw new ApiError(
@@ -218,6 +227,16 @@ export class ApiClient {
       query: { page: params.page, limit: params.limit, user: params.user },
     });
     return { items: env.data?.sites ?? [], pagination: env.metadata?.pagination };
+  }
+
+  async getSitesConfig(): Promise<SitesCliConfig> {
+    const env = await this.request<SitesConfigCacheResponse>('GET', '/api/v1/config/cache');
+    const sites = env.data?.configs?.sites ?? env.data?.sites ?? env.data?.config?.sites ?? env.data?.data?.sites;
+    if (!sites) throw new ApiError('Could not load sites lifecycle. Try again later.', 0, env.request_id);
+    return {
+      enabled: sites.enabled,
+      upload: sites.upload,
+    };
   }
 
   async createSite(form: FormData): Promise<Site> {

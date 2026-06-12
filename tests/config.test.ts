@@ -6,11 +6,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   clearTokens,
+  configDir,
+  configPath,
   loadConfig,
   loadTokens,
   resolveProfile,
   saveConfig,
   saveTokens,
+  tokensDir,
+  tokensPath,
 } from '../src/lib/config.js';
 
 let dir: string;
@@ -53,6 +57,18 @@ describe('config', () => {
     expect(again.profiles.staging!.authEnabled).toBe(false);
   });
 
+  it('repairs config directory and file permissions when saving', () => {
+    fs.mkdirSync(configDir(), { recursive: true, mode: 0o755 });
+    fs.writeFileSync(configPath(), '{}\n', { mode: 0o644 });
+    fs.chmodSync(configDir(), 0o755);
+    fs.chmodSync(configPath(), 0o644);
+
+    saveConfig({ currentProfile: 'default', profiles: { default: { apiUrl: 'https://lc.example.com', authEnabled: false } } });
+
+    expect(fs.statSync(configDir()).mode & 0o777).toBe(0o700);
+    expect(fs.statSync(configPath()).mode & 0o777).toBe(0o600);
+  });
+
   it('resolves profiles with override and errors on unknown', () => {
     const cfg = loadConfig();
     cfg.profiles.default = { apiUrl: 'https://lc.example.com', authEnabled: false };
@@ -68,5 +84,18 @@ describe('config', () => {
     expect(mode).toBe(0o600);
     expect(clearTokens('default')).toBe(true);
     expect(loadTokens('default')).toBeNull();
+  });
+
+  it('repairs token directory and file permissions when saving', () => {
+    fs.mkdirSync(tokensDir(), { recursive: true, mode: 0o755 });
+    fs.writeFileSync(tokensPath('default'), '{}\n', { mode: 0o644 });
+    fs.chmodSync(tokensDir(), 0o755);
+    fs.chmodSync(tokensPath('default'), 0o644);
+
+    saveTokens('default', { accessToken: 'a', refreshToken: 'r', expiresAt: 123 });
+
+    expect(fs.statSync(configDir()).mode & 0o777).toBe(0o700);
+    expect(fs.statSync(tokensDir()).mode & 0o777).toBe(0o700);
+    expect(fs.statSync(tokensPath('default')).mode & 0o777).toBe(0o600);
   });
 });
