@@ -10,6 +10,8 @@ import type {
   PaginationMetadata as GeneratedPaginationMetadata,
   PullRequest,
   Site,
+  SitesConfig as GeneratedSitesConfig,
+  SitesUploadConfig,
   WebhookInvocation,
 } from './generated/index.js';
 
@@ -28,6 +30,18 @@ export interface ApiEnvelope<T> {
 }
 
 export type { Site, WebhookInvocation };
+
+export interface SitesCliConfig {
+  enabled: boolean;
+  upload: SitesUploadConfig;
+}
+
+export interface SitesConfigCacheResponse {
+  configs?: { sites?: GeneratedSitesConfig };
+  sites?: GeneratedSitesConfig;
+  config?: { sites?: GeneratedSitesConfig };
+  data?: { sites?: GeneratedSitesConfig };
+}
 
 export type PullRequestSummary = PullRequest;
 

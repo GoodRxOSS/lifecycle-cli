@@ -159,6 +159,9 @@ lfc sites extend a1b2c3d4e5              # push out the TTL/expiry
 lfc sites delete a1b2c3d4e5 --yes
 ```
 
+Directory uploads honor default ignores such as `.git`, `node_modules`, `.DS_Store`, `.next/cache`, `dist/.cache`, and `coverage`.
+Add a `.lfcsiteignore` file to the uploaded directory for additional ignore patterns. The CLI fetches the deployment's Sites upload policy before create/update and validates file count, allowed extensions, extracted bytes, and upload size before sending content.
+
 ## For agents / scripting
 
 - `lfc llms` prints a self-contained, llms.txt-style instruction document (setup, auth, command surface, recipes, troubleshooting) — point your agent at it instead of fetching docs from the web. Platform-level reference lives at <https://uselifecycle.com/llms.txt>.
