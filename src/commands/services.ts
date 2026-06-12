@@ -164,6 +164,7 @@ export function registerServicesCommands(program: Command): void {
             jobName = jobs[0]!.jobName;
             if (!ctx.quiet && !ctx.json) process.stderr.write(pc.dim(`latest ${kind} job: ${jobName}\n`));
           }
+          if (!jobName) throw new Error(`No ${kind} job selected for ${name}`);
           const info = await ctx.api.getJobLogInfo(buildUuid, name, jobName, kind);
           await printJobLogs(ctx, buildUuid, jobName, info, opts);
         }

@@ -29,6 +29,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsx src/index.ts",
+    "generate:api": "rm -rf ./src/lib/generated && orval --config ./orval.config.ts && node ./scripts/fix-generated-imports.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
@@ -45,6 +46,8 @@
     "@types/archiver": "^6.0.3",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.0.0",
+    "dotenv": "^17.2.3",
+    "orval": "7.4.1",
     "tsup": "^8.5.0",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0",

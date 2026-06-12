@@ -11,7 +11,7 @@ function podRows(pods: PodInfo[]): string[][] {
   return pods.map((pod) => [
     pod.podName,
     pod.serviceName ?? '',
-    pod.ready,
+    String(pod.ready),
     statusColor(pod.status),
     pod.restarts > 0 ? pc.yellow(String(pod.restarts)) : '0',
     pod.age,
