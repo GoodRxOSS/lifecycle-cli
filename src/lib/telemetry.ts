@@ -5,6 +5,7 @@ import type { Command } from 'commander';
 import { getAccessToken } from './auth.js';
 import { loadConfig, saveConfig } from './config.js';
 import type { Ctx } from './context.js';
+import type { CreateTelemetryEventBody } from './generated/index.js';
 
 import pkg from '../../package.json' with { type: 'json' };
 
@@ -73,25 +74,26 @@ export async function reportInvocation(
     const token = await getAccessToken(ctx.profileName, ctx.profile);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
+    const body: CreateTelemetryEventBody = {
+      source: 'cli',
+      clientId: getInstallId(),
+      event: commandPath(cmd),
+      attributes: { flags: explicitFlags(cmd) },
+      durationMs: Math.round(durationMs),
+      status: outcome.status,
+      exitCode: outcome.exitCode,
+      errorClass: outcome.errorClass ?? null,
+      errorHttpStatus: outcome.errorHttpStatus ?? null,
+      errorCode: outcome.errorCode ?? null,
+      clientVersion: pkg.version,
+      runtimeVersion: process.version,
+      platform: process.platform,
+      arch: process.arch,
+    };
     await fetch(`${ctx.api.baseUrl}/api/v2/telemetry/events`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        source: 'cli',
-        clientId: getInstallId(),
-        event: commandPath(cmd),
-        attributes: { flags: explicitFlags(cmd) },
-        durationMs: Math.round(durationMs),
-        status: outcome.status,
-        exitCode: outcome.exitCode,
-        errorClass: outcome.errorClass ?? null,
-        errorHttpStatus: outcome.errorHttpStatus ?? null,
-        errorCode: outcome.errorCode ?? null,
-        clientVersion: pkg.version,
-        runtimeVersion: process.version,
-        platform: process.platform,
-        arch: process.arch,
-      }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(TELEMETRY_TIMEOUT_MS),
     });
   } catch {
