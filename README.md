@@ -70,6 +70,8 @@ lfc --profile local builds list         # one-off profile override
 
 Config lives at `~/.config/lifecycle-cli/config.json`. Environment overrides: `LFC_PROFILE`, `LIFECYCLE_API_URL`, `LFC_JSON=1`, `LFC_CONFIG_DIR`.
 
+The CLI reports anonymous usage telemetry to your own deployment's API (command and flag names, duration, and outcome — never arguments, values, error messages, or identity). Set `LFC_TELEMETRY_DISABLED=1` to turn it off.
+
 ## Builds (preview environments)
 
 ```bash

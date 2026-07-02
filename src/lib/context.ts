@@ -4,6 +4,7 @@ import pc from 'picocolors';
 import { ApiClient, ApiError } from './api.js';
 import { AuthError } from './auth.js';
 import { loadConfig, resolveProfile, type ConfigFile, type Profile } from './config.js';
+import { reportInvocation, type TelemetryOutcome } from './telemetry.js';
 
 export interface Ctx {
   config: ConfigFile;
@@ -40,21 +41,29 @@ export function runAction<A extends unknown[]>(
   return async (...args) => {
     const cmd = args[args.length - 1] as Command;
     const rest = args.slice(0, -1) as unknown as A;
+    let ctx: Ctx | undefined;
+    const startedAt = Date.now();
+    let outcome: TelemetryOutcome = { status: 'success', exitCode: 0 };
     try {
-      const ctx = buildCtx(cmd);
+      ctx = buildCtx(cmd);
       await fn(ctx, ...rest);
     } catch (err) {
       if (err instanceof AuthError) {
         process.stderr.write(`${pc.red('auth error:')} ${err.message}\n`);
         process.exitCode = 4;
+        outcome = { status: 'error', exitCode: 4, errorClass: 'AuthError' };
       } else if (err instanceof ApiError) {
         const reqId = err.requestId ? pc.dim(` (request_id: ${err.requestId})`) : '';
         process.stderr.write(`${pc.red(`api error (${err.status}):`)} ${err.message}${reqId}\n`);
-        process.exitCode = err.status === 404 ? 3 : 1;
+        const exitCode = err.status === 404 ? 3 : 1;
+        process.exitCode = exitCode;
+        outcome = { status: 'error', exitCode, errorClass: 'ApiError', errorHttpStatus: err.status, errorCode: err.code };
       } else {
         process.stderr.write(`${pc.red('error:')} ${(err as Error).message}\n`);
         process.exitCode = 1;
+        outcome = { status: 'error', exitCode: 1, errorClass: 'Error' };
       }
     }
+    await reportInvocation(ctx, cmd, Date.now() - startedAt, outcome);
   };
 }

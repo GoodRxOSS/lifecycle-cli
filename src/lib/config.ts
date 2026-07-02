@@ -17,6 +17,8 @@ export interface Profile {
 export interface ConfigFile {
   currentProfile: string;
   profiles: Record<string, Profile>;
+  /** Anonymous telemetry install id — a random UUID, never tied to a user. */
+  installId?: string;
 }
 
 export const DEFAULT_PROFILE_NAME = 'default';
