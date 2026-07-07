@@ -64,6 +64,11 @@ export function runAction<A extends unknown[]>(
         outcome = { status: 'error', exitCode: 1, errorClass: 'Error' };
       }
     }
+    // Some commands signal failure by setting process.exitCode and returning rather than
+    // throwing (e.g. a terminally-failed build, invalid schema); reflect that in telemetry.
+    if (outcome.status === 'success' && process.exitCode) {
+      outcome = { status: 'error', exitCode: Number(process.exitCode) };
+    }
     await reportInvocation(ctx, cmd, Date.now() - startedAt, outcome);
   };
 }

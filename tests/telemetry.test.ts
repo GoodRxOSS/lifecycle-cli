@@ -5,8 +5,8 @@ import path from 'node:path';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { loadConfig, saveConfig } from '../src/lib/config.js';
-import type { Ctx } from '../src/lib/context.js';
+import { loadConfig, saveConfig, saveTokens } from '../src/lib/config.js';
+import { runAction, type Ctx } from '../src/lib/context.js';
 import {
   commandPath,
   explicitFlags,
@@ -194,10 +194,81 @@ describe('reportInvocation', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('attaches a cached valid token without refreshing', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+    saveTokens('default', { accessToken: 'cached-token', expiresAt: Date.now() + 60_000 });
+    const cmd = await parsedCommand(['builds', 'list']);
+    const ctx = fakeCtx({
+      authEnabled: true,
+      keycloak: { issuer: 'https://kc.example.com/realms/lifecycle', clientId: 'lifecycle-cli' },
+    });
+
+    await reportInvocation(ctx, cmd, 10, { status: 'success', exitCode: 0 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer cached-token');
+  });
+
+  it('skips silently when the only cached token is expired (never refreshes)', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    saveTokens('default', { accessToken: 'stale-token', expiresAt: Date.now() - 1_000 });
+    const cmd = await parsedCommand(['builds', 'list']);
+    const ctx = fakeCtx({
+      authEnabled: true,
+      keycloak: { issuer: 'https://kc.example.com/realms/lifecycle', clientId: 'lifecycle-cli' },
+    });
+
+    await reportInvocation(ctx, cmd, 10, { status: 'success', exitCode: 0 });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('never throws when the network fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNREFUSED')));
     const cmd = await parsedCommand(['builds', 'list']);
 
     await expect(reportInvocation(fakeCtx(), cmd, 10, { status: 'success', exitCode: 0 })).resolves.toBeUndefined();
+  });
+});
+
+describe('runAction telemetry outcome', () => {
+  async function runWrapped(handler: (ctx: Ctx) => Promise<void>) {
+    saveConfig({
+      currentProfile: 'default',
+      profiles: { default: { apiUrl: 'https://lifecycle.example.com', authEnabled: false } },
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+    process.exitCode = 0;
+    const program = new Command().name('lfc').option('--json').option('--profile <name>');
+    program.command('demo').action(runAction(handler));
+    await program.parseAsync(['demo'], { from: 'user' });
+    return fetchMock.mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string));
+  }
+
+  it('reports error when a command sets process.exitCode without throwing', async () => {
+    const prev = process.exitCode;
+    try {
+      const [body] = await runWrapped(async () => {
+        process.exitCode = 2;
+      });
+      expect(body).toMatchObject({ status: 'error', exitCode: 2 });
+      expect(body.errorClass).toBeNull();
+    } finally {
+      process.exitCode = prev;
+    }
+  });
+
+  it('reports success with exit 0 for a clean command', async () => {
+    const prev = process.exitCode;
+    try {
+      const [body] = await runWrapped(async () => {});
+      expect(body).toMatchObject({ status: 'success', exitCode: 0 });
+    } finally {
+      process.exitCode = prev;
+    }
   });
 });

@@ -2,8 +2,7 @@ import crypto from 'node:crypto';
 
 import type { Command } from 'commander';
 
-import { getAccessToken } from './auth.js';
-import { loadConfig, saveConfig } from './config.js';
+import { loadConfig, loadTokens, saveConfig } from './config.js';
 import type { Ctx } from './context.js';
 import type { CreateTelemetryEventBody } from './generated/index.js';
 
@@ -59,6 +58,17 @@ export function getInstallId(): string {
 }
 
 /**
+ * An already-valid access token for the profile, or null. Reads only the cached token —
+ * never triggers a Keycloak refresh, so the telemetry send stays a single network op
+ * bounded by TELEMETRY_TIMEOUT_MS.
+ */
+function cachedAccessToken(ctx: Ctx): string | null {
+  const tokens = loadTokens(ctx.profileName);
+  if (!tokens) return null;
+  return tokens.expiresAt > Date.now() ? tokens.accessToken : null;
+}
+
+/**
  * Report one command invocation to the deployment's telemetry endpoint.
  * Must never affect the command: every failure (offline, logged out, old server
  * without the endpoint, timeout) is swallowed, bounded by TELEMETRY_TIMEOUT_MS.
@@ -70,8 +80,16 @@ export async function reportInvocation(
   outcome: TelemetryOutcome
 ): Promise<void> {
   if (isTelemetryDisabled() || !ctx) return;
+
+  // On auth-required deployments, only report when a valid token is already cached.
+  // Refreshing here could hit Keycloak with no timeout, escaping the fetch bound below.
+  let token: string | null = null;
+  if (ctx.profile.authEnabled) {
+    token = cachedAccessToken(ctx);
+    if (!token) return;
+  }
+
   try {
-    const token = await getAccessToken(ctx.profileName, ctx.profile);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
     const body: CreateTelemetryEventBody = {
