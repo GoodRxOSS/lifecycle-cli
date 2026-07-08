@@ -22,7 +22,7 @@ export class ApiError extends Error {
     message: string,
     public readonly status: number,
     public readonly requestId?: string,
-    public readonly code?: string
+    public readonly code?: string,
   ) {
     super(message);
   }
@@ -43,14 +43,19 @@ export class ApiClient {
   constructor(
     private readonly profileName: string,
     private readonly profile: Profile,
-    private readonly apiUrlOverride?: string
+    private readonly apiUrlOverride?: string,
   ) {}
 
   get baseUrl(): string {
     return (this.apiUrlOverride || process.env.LIFECYCLE_API_URL || this.profile.apiUrl).replace(/\/$/, '');
   }
 
-  private async request<T>(method: string, path: string, opts: RequestOptions = {}, retried = false): Promise<ApiEnvelope<T>> {
+  private async request<T>(
+    method: string,
+    path: string,
+    opts: RequestOptions = {},
+    retried = false,
+  ): Promise<ApiEnvelope<T>> {
     const url = new URL(this.baseUrl + path);
     for (const [k, v] of Object.entries(opts.query ?? {})) {
       if (v !== undefined) url.searchParams.set(k, String(v));
@@ -85,9 +90,7 @@ export class ApiClient {
     }
 
     const envelope =
-      parsed &&
-      typeof parsed === 'object' &&
-      ('request_id' in parsed || 'data' in parsed || 'error' in parsed)
+      parsed && typeof parsed === 'object' && ('request_id' in parsed || 'data' in parsed || 'error' in parsed)
         ? (parsed as ApiEnvelope<T>)
         : ({ request_id: '', data: parsed as T, error: null } satisfies ApiEnvelope<T>);
 
@@ -96,7 +99,7 @@ export class ApiClient {
         envelope.error?.message ?? `${res.status} ${res.statusText}`,
         res.status,
         envelope.request_id,
-        envelope.error?.code
+        envelope.error?.code,
       );
     }
     return envelope;
@@ -132,7 +135,7 @@ export class ApiClient {
    */
   async resolveBuild(
     selector: Selector,
-    opts: { limit?: number; maxPages?: number } = {}
+    opts: { limit?: number; maxPages?: number } = {},
   ): Promise<{ matches: BuildListItem[]; truncated: boolean }> {
     const limit = opts.limit ?? 100;
     const maxPages = opts.maxPages ?? 20;
@@ -171,19 +174,19 @@ export class ApiClient {
   async redeployService(uuid: string, service: string): Promise<unknown> {
     const env = await this.request<unknown>(
       'PUT',
-      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/redeploy`
+      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/redeploy`,
     );
     return env.data;
   }
 
   async patchServiceOverrides(
     uuid: string,
-    overrides: Array<{ name: string; active?: boolean; branchOrExternalUrl?: string }>
+    overrides: Array<{ name: string; active?: boolean; branchOrExternalUrl?: string }>,
   ): Promise<{ serviceOverrides: ServiceOverrideState[]; queued?: unknown }> {
     const env = await this.request<{ serviceOverrides: ServiceOverrideState[]; queued?: unknown }>(
       'PATCH',
       `/api/v2/builds/${encodeURIComponent(uuid)}/services`,
-      { json: { serviceOverrides: overrides } }
+      { json: { serviceOverrides: overrides } },
     );
     return env.data as { serviceOverrides: ServiceOverrideState[]; queued?: unknown };
   }
@@ -198,7 +201,7 @@ export class ApiClient {
   async listServicePods(uuid: string, service: string): Promise<PodInfo[]> {
     const env = await this.request<{ pods: PodInfo[] }>(
       'GET',
-      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/pods`
+      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/pods`,
     );
     return env.data?.pods ?? [];
   }
@@ -206,7 +209,7 @@ export class ApiClient {
   async listBuildJobs(uuid: string, service: string): Promise<BuildJobInfo[]> {
     const env = await this.request<{ builds: BuildJobInfo[] }>(
       'GET',
-      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/build-jobs`
+      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/build-jobs`,
     );
     return env.data?.builds ?? [];
   }
@@ -214,16 +217,21 @@ export class ApiClient {
   async listDeployJobs(uuid: string, service: string): Promise<DeployJobInfo[]> {
     const env = await this.request<{ deployments: DeployJobInfo[] }>(
       'GET',
-      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/deploy-jobs`
+      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/deploy-jobs`,
     );
     return env.data?.deployments ?? [];
   }
 
-  async getJobLogInfo(uuid: string, service: string, jobName: string, kind: 'build' | 'deploy'): Promise<LogStreamInfo> {
+  async getJobLogInfo(
+    uuid: string,
+    service: string,
+    jobName: string,
+    kind: 'build' | 'deploy',
+  ): Promise<LogStreamInfo> {
     const segment = kind === 'build' ? 'build-jobs' : 'deploy-jobs';
     const env = await this.request<LogStreamInfo>(
       'GET',
-      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/${segment}/${encodeURIComponent(jobName)}`
+      `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/${segment}/${encodeURIComponent(jobName)}`,
     );
     return env.data as LogStreamInfo;
   }

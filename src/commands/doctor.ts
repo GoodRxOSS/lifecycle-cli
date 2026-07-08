@@ -30,11 +30,12 @@ export function registerDoctorCommand(program: Command): void {
       } else {
         process.stdout.write(`${pc.bold('lfc doctor')}\n`);
         for (const check of report.checks) printCheck(check);
-        const fixable = report.checks.some((check) => check.fixable && check.status !== 'ok');
-        if (fixable && !opts.fix) process.stdout.write(pc.dim('\nRun `lfc doctor --fix` to repair fixable permission issues.\n'));
+        const fixable = report.checks.some(check => check.fixable && check.status !== 'ok');
+        if (fixable && !opts.fix)
+          process.stdout.write(pc.dim('\nRun `lfc doctor --fix` to repair fixable permission issues.\n'));
       }
 
-      if (report.checks.some((check) => check.status === 'error')) process.exitCode = opts.fix ? 3 : 1;
-      else if (report.checks.some((check) => check.status === 'warn')) process.exitCode = 2;
+      if (report.checks.some(check => check.status === 'error')) process.exitCode = opts.fix ? 3 : 1;
+      else if (report.checks.some(check => check.status === 'warn')) process.exitCode = 2;
     });
 }

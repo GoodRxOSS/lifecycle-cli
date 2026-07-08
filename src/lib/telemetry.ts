@@ -2,11 +2,11 @@ import crypto from 'node:crypto';
 
 import type { Command } from 'commander';
 
+import pkg from '../../package.json' with { type: 'json' };
+
 import { loadConfig, loadTokens, saveConfig } from './config.js';
 import type { Ctx } from './context.js';
 import type { CreateTelemetryEventBody } from './generated/index.js';
-
-import pkg from '../../package.json' with { type: 'json' };
 
 export const TELEMETRY_TIMEOUT_MS = 3000;
 
@@ -77,7 +77,7 @@ export async function reportInvocation(
   ctx: Ctx | undefined,
   cmd: Command,
   durationMs: number,
-  outcome: TelemetryOutcome
+  outcome: TelemetryOutcome,
 ): Promise<void> {
   if (isTelemetryDisabled() || !ctx) return;
 

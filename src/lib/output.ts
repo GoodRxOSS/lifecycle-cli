@@ -12,9 +12,7 @@ function pad(s: string, width: number): string {
 }
 
 export function renderTable(headers: string[], rows: string[][]): string {
-  const widths = headers.map((h, i) =>
-    Math.max(visibleLength(h), ...rows.map((r) => visibleLength(r[i] ?? '')))
-  );
+  const widths = headers.map((h, i) => Math.max(visibleLength(h), ...rows.map(r => visibleLength(r[i] ?? ''))));
   const lines: string[] = [];
   lines.push(headers.map((h, i) => pc.bold(pad(h.toUpperCase(), widths[i] ?? 0))).join('  '));
   for (const row of rows) {

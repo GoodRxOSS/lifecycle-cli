@@ -75,7 +75,7 @@ describe('prepareSiteUpload', () => {
       prepareSiteUpload(dir, {
         ...config,
         upload: { ...config.upload, maxExtractedBytes: 2 },
-      })
+      }),
     ).rejects.toThrow('Directory contents');
   });
 });

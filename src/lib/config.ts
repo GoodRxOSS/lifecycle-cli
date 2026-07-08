@@ -74,7 +74,11 @@ export function saveConfig(config: ConfigFile): void {
   writePrivateJson(configPath(), config);
 }
 
-export function resolveProfile(config: ConfigFile, name?: string, apiUrlOverride?: string): { name: string; profile: Profile } {
+export function resolveProfile(
+  config: ConfigFile,
+  name?: string,
+  apiUrlOverride?: string,
+): { name: string; profile: Profile } {
   const profileName = name || process.env.LFC_PROFILE || config.currentProfile;
   const profile = config.profiles[profileName];
   if (!profile) {

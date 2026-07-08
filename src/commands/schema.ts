@@ -20,7 +20,7 @@ function reportResult(ctx: Ctx, source: string, result: SchemaValidationResult):
   } else {
     const n = result.errors.length;
     process.stdout.write(
-      `${pc.red('✗')} ${source} failed schema ${result.schemaVersion} validation (${n} error${n === 1 ? '' : 's'})\n`
+      `${pc.red('✗')} ${source} failed schema ${result.schemaVersion} validation (${n} error${n === 1 ? '' : 's'})\n`,
     );
     for (const issue of result.errors) {
       process.stdout.write(`  ${pc.yellow(issue.path)}: ${issue.message}\n`);
@@ -43,7 +43,7 @@ async function validate(ctx: Ctx, target: string | undefined): Promise<void> {
     } else {
       process.stdout.write(
         `${pc.red('✗')} ${opts.repo}@${opts.branch} failed validation ` +
-          `(run locally on a checkout for error details)\n`
+          `(run locally on a checkout for error details)\n`,
       );
     }
     if (!valid) process.exitCode = 1;

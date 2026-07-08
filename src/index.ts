@@ -1,5 +1,7 @@
 import { Command } from 'commander';
 
+import pkg from '../package.json' with { type: 'json' };
+
 import { registerAuthCommands } from './commands/auth.js';
 import { registerBuildsCommands } from './commands/builds.js';
 import { registerConfigCommands } from './commands/config.js';
@@ -10,8 +12,6 @@ import { registerPodsCommands } from './commands/pods.js';
 import { registerSchemaCommands } from './commands/schema.js';
 import { registerServicesCommands } from './commands/services.js';
 import { registerSitesCommands } from './commands/sites.js';
-
-import pkg from '../package.json' with { type: 'json' };
 
 const program = new Command();
 

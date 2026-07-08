@@ -104,7 +104,7 @@ describe('parseSelector', () => {
 
   it('rejects a --repo that conflicts with the PR URL', () => {
     expect(() => parseSelector({ pr: 'https://github.com/acme/storefront/pull/9', repo: 'other/repo' })).toThrow(
-      /conflicts/
+      /conflicts/,
     );
   });
 });
@@ -118,15 +118,15 @@ describe('matchBuilds', () => {
   ];
 
   it('matches on repo + PR number only', () => {
-    expect(matchBuilds(builds, { repo: 'acme/storefront', prNumber: 10 }).map((b) => b.uuid)).toEqual(['a']);
+    expect(matchBuilds(builds, { repo: 'acme/storefront', prNumber: 10 }).map(b => b.uuid)).toEqual(['a']);
   });
 
   it('matches on repo + branch only', () => {
-    expect(matchBuilds(builds, { repo: 'acme/storefront', branch: 'feat/y' }).map((b) => b.uuid)).toEqual(['b']);
+    expect(matchBuilds(builds, { repo: 'acme/storefront', branch: 'feat/y' }).map(b => b.uuid)).toEqual(['b']);
   });
 
   it('is case-insensitive on repo', () => {
-    expect(matchBuilds(builds, { repo: 'ACME/StoreFront', prNumber: 11 }).map((b) => b.uuid)).toEqual(['b']);
+    expect(matchBuilds(builds, { repo: 'ACME/StoreFront', prNumber: 11 }).map(b => b.uuid)).toEqual(['b']);
   });
 
   it('never matches a build without a pullRequest', () => {
@@ -134,7 +134,7 @@ describe('matchBuilds', () => {
   });
 
   it('does not match the wrong repo even when the number/branch coincide', () => {
-    expect(matchBuilds(builds, { repo: 'acme/storefront', branch: 'feat/x' }).map((b) => b.uuid)).toEqual(['a']);
+    expect(matchBuilds(builds, { repo: 'acme/storefront', branch: 'feat/x' }).map(b => b.uuid)).toEqual(['a']);
   });
 });
 

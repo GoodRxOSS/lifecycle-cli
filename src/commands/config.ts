@@ -36,7 +36,7 @@ export function registerConfigCommands(program: Command): void {
     .command('list')
     .description('List profiles and their settings')
     .action(
-      runAction(async (ctx) => {
+      runAction(async ctx => {
         if (ctx.json) {
           printJson({ currentProfile: ctx.config.currentProfile, profiles: ctx.config.profiles });
           return;
@@ -48,7 +48,7 @@ export function registerConfigCommands(program: Command): void {
           p.keycloak?.issuer ?? '',
         ]);
         process.stdout.write(renderTable(['profile', 'api url', 'auth', 'issuer'], rows) + '\n');
-      })
+      }),
     );
 
   config
@@ -64,7 +64,7 @@ export function registerConfigCommands(program: Command): void {
         const value = key.split('.').reduce<unknown>((acc, part) => (acc as Record<string, unknown>)?.[part], profile);
         if (ctx.json) printJson({ [key]: value ?? null });
         else process.stdout.write(`${String(value ?? '')}\n`);
-      })
+      }),
     );
 
   config
@@ -78,7 +78,7 @@ export function registerConfigCommands(program: Command): void {
         setKey(profile, key, value);
         saveConfig(cfg);
         process.stderr.write(`${pc.green('✓')} ${ctx.profileName}.${key} = ${value}\n`);
-      })
+      }),
     );
 
   config
@@ -94,7 +94,7 @@ export function registerConfigCommands(program: Command): void {
         async (
           _ctx,
           name: string,
-          opts: { apiUrl: string; uiUrl?: string; issuer?: string; clientId: string; auth?: boolean }
+          opts: { apiUrl: string; uiUrl?: string; issuer?: string; clientId: string; auth?: boolean },
         ) => {
           const cfg = loadConfig();
           if (cfg.profiles[name]) throw new Error(`Profile "${name}" already exists`);
@@ -110,9 +110,11 @@ export function registerConfigCommands(program: Command): void {
           };
           if (Object.keys(cfg.profiles).length === 1) cfg.currentProfile = name;
           saveConfig(cfg);
-          process.stderr.write(`${pc.green('✓')} Created profile "${name}" — switch with \`lfc config use-profile ${name}\`\n`);
-        }
-      )
+          process.stderr.write(
+            `${pc.green('✓')} Created profile "${name}" — switch with \`lfc config use-profile ${name}\`\n`,
+          );
+        },
+      ),
     );
 
   config
@@ -125,6 +127,6 @@ export function registerConfigCommands(program: Command): void {
         cfg.currentProfile = name;
         saveConfig(cfg);
         process.stderr.write(`${pc.green('✓')} Active profile: ${name}\n`);
-      })
+      }),
     );
 }

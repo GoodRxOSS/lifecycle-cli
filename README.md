@@ -1,6 +1,6 @@
 # lfc-cli (`lfc`)
 
-Command-line interface for [Lifecycle](https://github.com/GoodRxOSS/lifecycle) — view and manage preview environments (builds), redeploy services, and host static sites, straight from your terminal. Built for humans *and* agents: every command supports `--json`.
+Command-line interface for [Lifecycle](https://github.com/GoodRxOSS/lifecycle) — view and manage preview environments (builds), redeploy services, and host static sites, straight from your terminal. Built for humans _and_ agents: every command supports `--json`.
 
 ```
 $ lfc builds list --mine
