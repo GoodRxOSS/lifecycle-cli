@@ -11,11 +11,15 @@ describe('visibleLength', () => {
 
 describe('renderTable', () => {
   it('aligns columns including colored cells', () => {
-    const out = renderTable(['name', 'status'], [
-      ['web', '\x1b[32mdeployed\x1b[0m'],
-      ['longer-name', 'error'],
-    ]);
-    const stripped = out.split('\n').map((l) => l.replace(/\x1b\[[0-9;]*m/g, ''));
+    const out = renderTable(
+      ['name', 'status'],
+      [
+        ['web', '\x1b[32mdeployed\x1b[0m'],
+        ['longer-name', 'error'],
+      ],
+    );
+    // eslint-disable-next-line no-control-regex
+    const stripped = out.split('\n').map(l => l.replace(/\x1b\[[0-9;]*m/g, ''));
     expect(stripped).toHaveLength(3);
     // the second column starts at the same visible offset on every line
     expect(stripped[1]!.indexOf('deployed')).toBe(stripped[0]!.indexOf('STATUS'));

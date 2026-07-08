@@ -10,7 +10,6 @@ import {
   PRIVATE_DIR_MODE,
   PRIVATE_FILE_MODE,
   tokensDir,
-  tokensPath,
 } from './config.js';
 
 export type DoctorStatus = 'ok' | 'warn' | 'error';
@@ -262,13 +261,13 @@ export function runDoctor({ fix = false }: { fix?: boolean } = {}): DoctorReport
           path: path.join(tokensDir(), entry),
           expectedMode: PRIVATE_FILE_MODE,
           fix,
-        })
+        }),
       );
     }
   }
 
   return {
-    ok: checks.every((check) => check.status === 'ok'),
+    ok: checks.every(check => check.status === 'ok'),
     checks,
   };
 }

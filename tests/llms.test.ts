@@ -20,6 +20,7 @@ describe('lfc llms instructions', () => {
 
   it('is plain text safe for non-TTY consumption', () => {
     // no ANSI escape codes and no template-literal escaping artifacts
+    // eslint-disable-next-line no-control-regex
     expect(LLMS_INSTRUCTIONS).not.toMatch(/\x1b\[/);
     expect(LLMS_INSTRUCTIONS).not.toContain('\\`');
     expect(LLMS_INSTRUCTIONS.endsWith('\n')).toBe(true);

@@ -1,0 +1,19 @@
+{
+  "printWidth": 120,
+  "trailingComma": "all",
+  "semi": true,
+  "singleQuote": true,
+  "arrowParens": "avoid",
+  "importOrder": [
+    "<BUILTIN_MODULES>",
+    "",
+    "<THIRD_PARTY_MODULES>",
+    "",
+    "^[.][.]/(.*)$",
+    "",
+    "^[.]/(.*)$",
+    ""
+  ],
+  "importOrderParserPlugins": ["typescript", "importAttributes"],
+  "plugins": ["@ianvs/prettier-plugin-sort-imports"]
+}
