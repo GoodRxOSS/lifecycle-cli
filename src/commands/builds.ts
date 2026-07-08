@@ -5,6 +5,7 @@ import pc from 'picocolors';
 import { openBrowser } from '../lib/auth.js';
 import { runAction, type Ctx } from '../lib/context.js';
 import { formatAge, link, parseDuration, printJson, renderTable, statusColor } from '../lib/output.js';
+import { parseSelector, pickBuild } from '../lib/resolve.js';
 import { BUILD_TERMINAL_FAILURE, BUILD_TERMINAL_SUCCESS, type Build, type Deploy } from '../lib/types.js';
 
 function buildUiUrl(ctx: Ctx, uuid: string): string | undefined {
@@ -78,6 +79,38 @@ async function watchBuild(ctx: Ctx, uuid: string, intervalMs: number, timeoutMs:
   }
 }
 
+/** Render a build's detail block (status, PR, services, env overrides). Shared by `get` and `find`. */
+function renderBuildDetail(ctx: Ctx, build: Build): void {
+  const pr = build.pullRequest;
+  const ui = buildUiUrl(ctx, build.uuid);
+  const fields: Array<[string, string]> = [
+    ['status', `${statusColor(build.status)}${build.statusMessage ? pc.dim(`  ${build.statusMessage}`) : ''}`],
+    ['namespace', build.namespace ?? ''],
+    ['kind', `${build.kind ?? 'environment'}${build.isStatic ? ' (static)' : ''}`],
+    ['sha', build.sha?.slice(0, 12) ?? ''],
+    ['pr', pr ? `${prLabel(build)} ${pc.dim(pr.title ?? '')}` : pc.dim('none')],
+    ['branch', pr?.branchName ?? ''],
+    ['author', pr?.githubLogin ?? ''],
+    ['updated', `${build.updatedAt ?? ''} ${pc.dim(formatAge(build.updatedAt))}`],
+    ['ui', ui ? link(ui) : ''],
+  ];
+  process.stdout.write(`${pc.bold(build.uuid)}\n`);
+  for (const [k, v] of fields) {
+    if (v) process.stdout.write(`  ${pc.dim(k.padEnd(10))} ${v}\n`);
+  }
+  const rows = serviceRows(build);
+  if (rows.length > 0) {
+    process.stdout.write(`\n${renderTable(['service', 'status', 'branch', 'url', 'updated'], rows)}\n`);
+  }
+  const runtimeEnv = build.commentRuntimeEnv ?? {};
+  const initEnv = build.commentInitEnv ?? {};
+  if (Object.keys(runtimeEnv).length || Object.keys(initEnv).length) {
+    process.stdout.write(`\n${pc.bold('env overrides')}\n`);
+    for (const [k, v] of Object.entries(runtimeEnv)) process.stdout.write(`  ${k}=${v}\n`);
+    for (const [k, v] of Object.entries(initEnv)) process.stdout.write(`  ${pc.dim('(init)')} ${k}=${v}\n`);
+  }
+}
+
 async function renderStatusOnce(ctx: Ctx, uuid: string): Promise<Build> {
   const build = await ctx.api.getBuild(uuid);
   const lines: string[] = [];
@@ -144,38 +177,60 @@ export function registerBuildsCommands(program: Command): void {
           printJson(build);
           return;
         }
-        const pr = build.pullRequest;
-        const ui = buildUiUrl(ctx, build.uuid);
-        const fields: Array<[string, string]> = [
-          ['status', `${statusColor(build.status)}${build.statusMessage ? pc.dim(`  ${build.statusMessage}`) : ''}`],
-          ['namespace', build.namespace ?? ''],
-          ['kind', `${build.kind ?? 'environment'}${build.isStatic ? ' (static)' : ''}`],
-          ['sha', build.sha?.slice(0, 12) ?? ''],
-          ['pr', pr ? `${prLabel(build)} ${pc.dim(pr.title ?? '')}` : pc.dim('none')],
-          ['branch', pr?.branchName ?? ''],
-          ['author', pr?.githubLogin ?? ''],
-          ['updated', `${build.updatedAt ?? ''} ${pc.dim(formatAge(build.updatedAt))}`],
-          ['ui', ui ? link(ui) : ''],
-        ];
-        process.stdout.write(`${pc.bold(build.uuid)}\n`);
-        for (const [k, v] of fields) {
-          if (v) process.stdout.write(`  ${pc.dim(k.padEnd(10))} ${v}\n`);
-        }
-        const rows = serviceRows(build);
-        if (rows.length > 0) {
-          process.stdout.write(`\n${renderTable(['service', 'status', 'branch', 'url', 'updated'], rows)}\n`);
-        }
-        const runtimeEnv = build.commentRuntimeEnv ?? {};
-        const initEnv = build.commentInitEnv ?? {};
-        if (Object.keys(runtimeEnv).length || Object.keys(initEnv).length) {
-          process.stdout.write(`\n${pc.bold('env overrides')}\n`);
-          for (const [k, v] of Object.entries(runtimeEnv)) process.stdout.write(`  ${k}=${v}\n`);
-          for (const [k, v] of Object.entries(initEnv)) process.stdout.write(`  ${pc.dim('(init)')} ${k}=${v}\n`);
-        }
+        renderBuildDetail(ctx, build);
         if (opts.manifest && build.manifest) {
           process.stdout.write(`\n${pc.bold('manifest')}\n`);
           process.stdout.write(typeof build.manifest === 'string' ? `${build.manifest}\n` : `${JSON.stringify(build.manifest, null, 2)}\n`);
         }
+      })
+    );
+
+  builds
+    .command('find')
+    .description('Find a build by PR or branch and resolve it to a uuid (agent-friendly)')
+    .option('--pr <url|number>', 'GitHub PR URL, or a PR number (a bare number needs --repo)')
+    .option('--branch <name>', 'branch name (needs --repo)')
+    .option('--repo <org/repo>', 'repository; required unless --pr is a full PR URL')
+    .action(
+      runAction(async (ctx, opts: { pr?: string; branch?: string; repo?: string }) => {
+        const selector = parseSelector(opts);
+        const target =
+          selector.prNumber !== undefined ? `${selector.repo}#${selector.prNumber}` : `${selector.repo}@${selector.branch}`;
+        const { matches, truncated } = await ctx.api.resolveBuild(selector);
+        const chosen = pickBuild(matches);
+
+        if (!chosen) {
+          if (truncated) {
+            process.stderr.write(
+              `${pc.yellow('!')} No build matched ${target} in the pages scanned — results may be truncated. ` +
+                `Double-check the repo/branch, or read the uuid from the PR comment.\n`
+            );
+            process.exitCode = 1;
+          } else {
+            process.stderr.write(
+              `${pc.dim(`No build found for ${target}. If the PR was just opened, Lifecycle may not have created the environment yet.`)}\n`
+            );
+            process.exitCode = 3;
+          }
+          if (ctx.json) printJson({ found: false, target, truncated });
+          return;
+        }
+
+        // The list payload is trimmed; fetch the full build so output matches `builds get`.
+        const build = await ctx.api.getBuild(chosen.uuid);
+        const others = matches.filter((m) => m.uuid !== chosen.uuid).map((m) => m.uuid);
+        if (others.length > 0) {
+          process.stderr.write(
+            `${pc.yellow('!')} ${matches.length} builds matched ${target}; showing most recent ${pc.bold(chosen.uuid)}. Others: ${others.join(', ')}\n`
+          );
+        }
+        if (ctx.json) {
+          // Uniform envelope (`found` always present) so callers can branch on it,
+          // and multiple matches are visible in JSON, not just on stderr.
+          printJson({ found: true, build, matches: matches.map((m) => m.uuid) });
+          return;
+        }
+        renderBuildDetail(ctx, build);
       })
     );
 
