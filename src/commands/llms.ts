@@ -105,6 +105,8 @@ Builds (preview environments):
 
     lfc builds list [--mine] [--search <text>] [--all] [-n <limit>] [-p <page>]
     lfc builds get <uuid> [--manifest]
+    lfc builds find --pr <url|number> [--repo org/repo]   # resolve a PR/branch to a build
+    lfc builds find --branch <name> --repo org/repo       # (see the recipe below)
     lfc builds status <uuid> [--watch]        # exit 0 deployed, 1 failed, 2 timeout
     lfc builds redeploy <uuid> [--watch]
     lfc builds destroy <uuid> --yes
@@ -157,10 +159,15 @@ Static sites:
 
 ## Recipes for common agent tasks
 
-Find the build for a PR or branch:
+Find the build for a PR or branch (preferred — resolves straight to the build):
 
-    lfc builds list --search <branch-or-pr-text> --json
-    # match on .branchName / .pullRequest fields; uuid is the key for everything else
+    lfc builds find --pr https://github.com/org/repo/pull/123 --json   # PR URL is self-contained
+    lfc builds find --pr 123 --repo org/repo --json                    # bare number needs --repo
+    lfc builds find --branch my-branch --repo org/repo --json          # branch needs --repo
+    # Output is the resolved build (same shape as "builds get"). Exit codes:
+    #   0 = found   3 = no build yet (e.g. PR just opened, not built)   1 = ambiguous/truncated
+    # The CLI does not read local git — you supply the PR/branch (get it however you like,
+    # e.g. from git or gh). Fallback for fuzzy lookups: lfc builds list --search <text> --json.
 
 Get the public URLs of a build's services:
 
@@ -194,7 +201,8 @@ Publish a report or artifact for humans:
   headless machines); verify with lfc whoami.
 - Network errors / cannot reach the API -> wrong URL or the user is off VPN.
   Check the configured URL with lfc config get; ask the user to check VPN.
-- Exit code 3 on a build command -> wrong or stale uuid; find the right one with
+- Exit code 3 on a build command -> wrong or stale uuid; resolve the right one with
+  lfc builds find --pr <url> (or --branch <name> --repo org/repo), or search with
   lfc builds list --search <text>.
 - Watch exited 2 (timeout) -> the deploy did not converge; investigate with
   pods list / services logs instead of blindly re-running redeploy.

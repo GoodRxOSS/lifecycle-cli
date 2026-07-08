@@ -79,6 +79,7 @@ lfc builds list                          # paginated; excludes torn_down/pending
 lfc builds list --mine --search checkout --all -n 50 -p 2
 lfc builds get <uuid>                    # status, PR, services + links, env overrides
 lfc builds get <uuid> --manifest         # include the stored manifest
+lfc builds find --pr <url>               # resolve a PR/branch to a build (see below)
 lfc builds status <uuid>                 # one-shot status (exit 1 if failed)
 lfc builds status <uuid> --watch         # live-updating until deployed/failed; exit 0/1/2
 lfc builds redeploy <uuid> [--watch]     # redeploy everything
@@ -89,6 +90,16 @@ lfc builds set <uuid> --track-defaults   # follow default branches (--no-track-d
 lfc builds webhooks <uuid> [--invoke]    # webhook invocation history / trigger them
 lfc builds open <uuid> [--print]         # open in the Lifecycle UI
 ```
+
+Don't have the UUID? Resolve one from a PR or branch instead of hunting through PR comments:
+
+```bash
+lfc builds find --pr https://github.com/org/repo/pull/123   # PR URL is self-contained
+lfc builds find --pr 123 --repo org/repo                    # bare number needs --repo
+lfc builds find --branch my-branch --repo org/repo          # branch needs --repo
+```
+
+Prints the resolved build (same as `builds get`). Exit `0` found, `3` no build yet (e.g. the PR was just opened), `1` ambiguous/truncated. The CLI doesn't read local git — you supply the PR/branch (from `git`, `gh`, wherever), keeping it a pure Lifecycle client.
 
 ### Env-var overrides (the “PR comment” overrides)
 

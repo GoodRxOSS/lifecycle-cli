@@ -1,5 +1,6 @@
 import { getAccessToken } from './auth.js';
 import type { Profile } from './config.js';
+import { matchBuilds, type Selector } from './resolve.js';
 import type {
   ApiEnvelope,
   Build,
@@ -120,6 +121,30 @@ export class ApiClient {
       },
     });
     return { items: env.data ?? [], pagination: env.metadata?.pagination };
+  }
+
+  /**
+   * Resolve a build by repo + PR number or branch, using the existing list
+   * endpoint (search narrows to the repo; matching is authoritative client-side).
+   * Pages until the repo's builds are exhausted or a page cap is hit; `truncated`
+   * signals the cap was reached with more pages left (so callers don't report a
+   * capped scan as a definitive "not found").
+   */
+  async resolveBuild(
+    selector: Selector,
+    opts: { limit?: number; maxPages?: number } = {}
+  ): Promise<{ matches: BuildListItem[]; truncated: boolean }> {
+    const limit = opts.limit ?? 100;
+    const maxPages = opts.maxPages ?? 20;
+    const matches: BuildListItem[] = [];
+    for (let page = 1; page <= maxPages; page++) {
+      const { items, pagination } = await this.listBuilds({ page, limit, search: selector.repo, exclude: '' });
+      matches.push(...matchBuilds(items, selector));
+      const totalPages = Number(pagination?.totalPages ?? 1);
+      if (items.length === 0 || page >= totalPages) return { matches, truncated: false };
+      if (page >= maxPages) return { matches, truncated: true };
+    }
+    return { matches, truncated: false };
   }
 
   async getBuild(uuid: string): Promise<Build> {
