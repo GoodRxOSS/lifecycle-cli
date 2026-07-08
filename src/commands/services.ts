@@ -12,16 +12,16 @@ export function registerServicesCommands(program: Command): void {
 
   services
     .command('list <buildUuid>')
-    .description('List a build\'s services with status and links')
+    .description("List a build's services with status and links")
     .option('--all', 'include inactive (disabled) services')
     .action(
       runAction(async (ctx, buildUuid: string, opts: { all?: boolean }) => {
         const build = await ctx.api.getBuild(buildUuid);
-        const deploys = (build.deploys ?? []).filter((d) => opts.all || d.active);
+        const deploys = (build.deploys ?? []).filter(d => opts.all || d.active);
         if (ctx.json) {
           printJson({
             build: build.uuid,
-            services: deploys.map((d) => ({
+            services: deploys.map(d => ({
               name: d.deployable?.name,
               status: d.status,
               statusMessage: d.statusMessage,
@@ -41,7 +41,7 @@ export function registerServicesCommands(program: Command): void {
           process.stdout.write(pc.dim('No services found.\n'));
           return;
         }
-        const rows = deploys.map((d) => [
+        const rows = deploys.map(d => [
           `${d.deployable?.name ?? d.uuid}${d.active ? '' : pc.dim(' (off)')}`,
           statusColor(d.status),
           d.branchName ?? '',
@@ -51,7 +51,7 @@ export function registerServicesCommands(program: Command): void {
         ]);
         process.stdout.write(`${pc.bold(build.uuid)}  ${statusColor(build.status)}\n\n`);
         process.stdout.write(renderTable(['service', 'status', 'branch', 'url', 'sha', 'updated'], rows) + '\n');
-      })
+      }),
     );
 
   services
@@ -64,9 +64,9 @@ export function registerServicesCommands(program: Command): void {
         else
           process.stderr.write(
             `${pc.green('✓')} Redeploy queued for service ${pc.bold(name)} in ${buildUuid}\n` +
-              pc.dim(`  follow with: lfc builds status ${buildUuid} --watch\n`)
+              pc.dim(`  follow with: lfc builds status ${buildUuid} --watch\n`),
           );
-      })
+      }),
     );
 
   services
@@ -77,7 +77,7 @@ export function registerServicesCommands(program: Command): void {
         const result = await ctx.api.patchServiceOverrides(buildUuid, [{ name, active: true }]);
         if (ctx.json) printJson(result);
         else process.stderr.write(`${pc.green('✓')} Enabled ${name} in ${buildUuid}\n`);
-      })
+      }),
     );
 
   services
@@ -88,7 +88,7 @@ export function registerServicesCommands(program: Command): void {
         const result = await ctx.api.patchServiceOverrides(buildUuid, [{ name, active: false }]);
         if (ctx.json) printJson(result);
         else process.stderr.write(`${pc.green('✓')} Disabled ${name} in ${buildUuid}\n`);
-      })
+      }),
     );
 
   services
@@ -107,7 +107,7 @@ export function registerServicesCommands(program: Command): void {
         process.stdout.write(pc.bold('build jobs\n'));
         if (buildJobs.length === 0) process.stdout.write(pc.dim('  (none)\n'));
         else {
-          const rows = buildJobs.map((j) => [
+          const rows = buildJobs.map(j => [
             j.jobName,
             statusColor(j.status),
             j.sha?.slice(0, 8) ?? '',
@@ -121,7 +121,7 @@ export function registerServicesCommands(program: Command): void {
         process.stdout.write(pc.bold('\ndeploy jobs\n'));
         if (deployJobs.length === 0) process.stdout.write(pc.dim('  (none)\n'));
         else {
-          const rows = deployJobs.map((j) => [
+          const rows = deployJobs.map(j => [
             j.jobName,
             statusColor(j.status),
             j.sha?.slice(0, 8) ?? '',
@@ -132,14 +132,14 @@ export function registerServicesCommands(program: Command): void {
           ]);
           process.stdout.write(renderTable(['job', 'status', 'sha', 'type', 'duration', 'started', ''], rows) + '\n');
         }
-        const failed = [...buildJobs, ...deployJobs].filter((j) => j.error);
+        const failed = [...buildJobs, ...deployJobs].filter(j => j.error);
         for (const j of failed) process.stdout.write(pc.red(`\n${j.jobName}: ${j.error}\n`));
-      })
+      }),
     );
 
   services
     .command('logs <buildUuid> <name>')
-    .description('Show logs for a service\'s latest build or deploy job (archived or live)')
+    .description("Show logs for a service's latest build or deploy job (archived or live)")
     .option('--deploy', 'deploy-job logs instead of build-job logs', false)
     .option('--job <jobName>', 'a specific job (see lfc services history)')
     .option('-f, --follow', 'keep following while the job is running', false)
@@ -151,7 +151,7 @@ export function registerServicesCommands(program: Command): void {
           ctx,
           buildUuid: string,
           name: string,
-          opts: { deploy: boolean; job?: string; follow: boolean; tail: string; timestamps: boolean }
+          opts: { deploy: boolean; job?: string; follow: boolean; tail: string; timestamps: boolean },
         ) => {
           const kind = opts.deploy ? 'deploy' : 'build';
           let jobName = opts.job;
@@ -167,8 +167,8 @@ export function registerServicesCommands(program: Command): void {
           if (!jobName) throw new Error(`No ${kind} job selected for ${name}`);
           const info = await ctx.api.getJobLogInfo(buildUuid, name, jobName, kind);
           await printJobLogs(ctx, buildUuid, jobName, info, opts);
-        }
-      )
+        },
+      ),
     );
 
   services
@@ -180,7 +180,7 @@ export function registerServicesCommands(program: Command): void {
           throw new Error('services edit is interactive — use services enable/disable/set-branch in scripts');
         }
         await editServicesInteractive(ctx, buildUuid);
-      })
+      }),
     );
 
   services
@@ -191,7 +191,7 @@ export function registerServicesCommands(program: Command): void {
         const result = await ctx.api.patchServiceOverrides(buildUuid, [{ name, branchOrExternalUrl: branchOrUrl }]);
         if (ctx.json) printJson(result);
         else process.stderr.write(`${pc.green('✓')} ${name} in ${buildUuid} now tracks ${pc.bold(branchOrUrl)}\n`);
-      })
+      }),
     );
 }
 
@@ -200,7 +200,7 @@ async function printJobLogs(
   buildUuid: string,
   jobName: string,
   info: LogStreamInfo,
-  opts: { follow: boolean; tail: string; timestamps: boolean }
+  opts: { follow: boolean; tail: string; timestamps: boolean },
 ): Promise<void> {
   if (info.archivedLogs !== undefined) {
     if (!ctx.quiet && !ctx.json) process.stderr.write(pc.dim(`— archived logs for ${jobName} —\n`));
@@ -225,16 +225,16 @@ async function printJobLogs(
       tailLines,
       timestamps: opts.timestamps,
     },
-    { quiet: ctx.quiet || ctx.json }
+    { quiet: ctx.quiet || ctx.json },
   );
 }
 
 async function editServicesInteractive(ctx: Ctx, buildUuid: string): Promise<void> {
   const build = await ctx.api.getBuild(buildUuid);
-  const deploys = (build.deploys ?? []).filter((d) => d.deployable?.name);
+  const deploys = (build.deploys ?? []).filter(d => d.deployable?.name);
   if (deploys.length === 0) throw new Error('No services found for this build');
 
-  const current = deploys.map((d) => ({
+  const current = deploys.map(d => ({
     name: d.deployable!.name,
     active: d.active,
     branch: d.serviceOverride?.branchOrExternalUrl ?? d.branchName ?? '',
@@ -244,8 +244,8 @@ async function editServicesInteractive(ctx: Ctx, buildUuid: string): Promise<voi
 
   const selected = await p.multiselect({
     message: 'Services to deploy (space toggles, like the PR comment checkboxes)',
-    options: current.map((s) => ({ value: s.name, label: s.name, hint: s.branch })),
-    initialValues: current.filter((s) => s.active).map((s) => s.name),
+    options: current.map(s => ({ value: s.name, label: s.name, hint: s.branch })),
+    initialValues: current.filter(s => s.active).map(s => s.name),
     required: false,
   });
   if (p.isCancel(selected)) {
@@ -256,12 +256,12 @@ async function editServicesInteractive(ctx: Ctx, buildUuid: string): Promise<voi
 
   const branchEdits = new Map<string, string>();
   for (;;) {
-    const editable = current.filter((s) => activeSet.has(s.name));
+    const editable = current.filter(s => activeSet.has(s.name));
     const choice = await p.select({
       message: 'Edit a service branch?',
       options: [
         { value: '', label: 'No — apply changes' },
-        ...editable.map((s) => ({
+        ...editable.map(s => ({
           value: s.name,
           label: s.name,
           hint: branchEdits.get(s.name) ?? s.branch,
@@ -273,7 +273,7 @@ async function editServicesInteractive(ctx: Ctx, buildUuid: string): Promise<voi
       return;
     }
     if (!choice) break;
-    const svc = current.find((s) => s.name === choice)!;
+    const svc = current.find(s => s.name === choice)!;
     const branch = await p.text({
       message: `Branch or external URL for ${choice}`,
       initialValue: branchEdits.get(choice as string) ?? svc.branch,
@@ -299,7 +299,7 @@ async function editServicesInteractive(ctx: Ctx, buildUuid: string): Promise<voi
   }
 
   const summary = overrides
-    .map((o) => {
+    .map(o => {
       const parts: string[] = [];
       if (o.active !== undefined) parts.push(o.active ? pc.green('enable') : pc.red('disable'));
       if (o.branchOrExternalUrl !== undefined) parts.push(`branch → ${pc.bold(o.branchOrExternalUrl)}`);
@@ -314,5 +314,7 @@ async function editServicesInteractive(ctx: Ctx, buildUuid: string): Promise<voi
 
   const result = await ctx.api.patchServiceOverrides(buildUuid, overrides);
   if (ctx.json) printJson(result);
-  p.outro(`${pc.green('✓')} Updated ${overrides.length} service(s) — follow with: lfc builds status ${buildUuid} --watch`);
+  p.outro(
+    `${pc.green('✓')} Updated ${overrides.length} service(s) — follow with: lfc builds status ${buildUuid} --watch`,
+  );
 }

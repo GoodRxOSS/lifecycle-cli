@@ -45,7 +45,7 @@ export function parseWsLogMessage(raw: string): WsLogMessage | null {
 export function streamPodLogs(
   apiBaseUrl: string,
   params: LogStreamParams,
-  opts: { prefix?: string; quiet?: boolean } = {}
+  opts: { prefix?: string; quiet?: boolean } = {},
 ): Promise<void> {
   const url = logStreamWsUrl(apiBaseUrl, params);
   const prefix = opts.prefix ? `${opts.prefix} ` : '';
@@ -71,7 +71,7 @@ export function streamPodLogs(
         process.stderr.write(pc.dim(`— streaming ${params.podName}/${params.containerName} (Ctrl-C to stop) —\n`));
       }
     };
-    ws.onmessage = (event) => {
+    ws.onmessage = event => {
       const msg = parseWsLogMessage(String(event.data));
       if (!msg) return;
       if (msg.type === 'log') {

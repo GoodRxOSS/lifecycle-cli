@@ -6,7 +6,10 @@ import type { BuildListItem } from '../src/lib/types.js';
 
 const PROFILE: Profile = { apiUrl: 'http://example.test', authEnabled: false };
 
-function mk(uuid: string, pr: { fullName: string; pullRequestNumber?: number; branchName?: string } | null): BuildListItem {
+function mk(
+  uuid: string,
+  pr: { fullName: string; pullRequestNumber?: number; branchName?: string } | null,
+): BuildListItem {
   return {
     uuid,
     status: 'deployed',
@@ -44,33 +47,51 @@ describe('ApiClient.resolveBuild', () => {
       [mk('a', { fullName: 'acme/repo', branchName: 'x' }), mk('b', { fullName: 'acme/repo', branchName: 'y' })],
       [mk('c', { fullName: 'acme/repo', branchName: 'z' })],
     ]);
-    const { matches, truncated } = await client.resolveBuild({ repo: 'acme/repo', branch: 'z' }, { limit: 2, maxPages: 5 });
-    expect(matches.map((m) => m.uuid)).toEqual(['c']);
+    const { matches, truncated } = await client.resolveBuild(
+      { repo: 'acme/repo', branch: 'z' },
+      { limit: 2, maxPages: 5 },
+    );
+    expect(matches.map(m => m.uuid)).toEqual(['c']);
     expect(truncated).toBe(false);
   });
 
   it('collects matches spread across multiple full pages', async () => {
     const client = clientWithPages([
-      [mk('a', { fullName: 'acme/repo', pullRequestNumber: 7 }), mk('z', { fullName: 'other/repo', pullRequestNumber: 7 })],
+      [
+        mk('a', { fullName: 'acme/repo', pullRequestNumber: 7 }),
+        mk('z', { fullName: 'other/repo', pullRequestNumber: 7 }),
+      ],
       [mk('c', { fullName: 'acme/repo', pullRequestNumber: 7 })],
     ]);
     const { matches } = await client.resolveBuild({ repo: 'acme/repo', prNumber: 7 }, { limit: 2, maxPages: 5 });
-    expect(matches.map((m) => m.uuid).sort()).toEqual(['a', 'c']);
+    expect(matches.map(m => m.uuid).sort()).toEqual(['a', 'c']);
   });
 
   it('flags truncated when the page cap is hit with full pages', async () => {
     const client = clientWithPages([
-      [mk('a', { fullName: 'acme/repo', pullRequestNumber: 1 }), mk('b', { fullName: 'acme/repo', pullRequestNumber: 2 })],
-      [mk('c', { fullName: 'acme/repo', pullRequestNumber: 3 }), mk('d', { fullName: 'acme/repo', pullRequestNumber: 4 })],
+      [
+        mk('a', { fullName: 'acme/repo', pullRequestNumber: 1 }),
+        mk('b', { fullName: 'acme/repo', pullRequestNumber: 2 }),
+      ],
+      [
+        mk('c', { fullName: 'acme/repo', pullRequestNumber: 3 }),
+        mk('d', { fullName: 'acme/repo', pullRequestNumber: 4 }),
+      ],
     ]);
-    const { matches, truncated } = await client.resolveBuild({ repo: 'acme/repo', prNumber: 99 }, { limit: 2, maxPages: 2 });
+    const { matches, truncated } = await client.resolveBuild(
+      { repo: 'acme/repo', prNumber: 99 },
+      { limit: 2, maxPages: 2 },
+    );
     expect(matches).toEqual([]);
     expect(truncated).toBe(true);
   });
 
   it('handles an empty first page', async () => {
     const client = clientWithPages([[]]);
-    const { matches, truncated } = await client.resolveBuild({ repo: 'acme/repo', prNumber: 1 }, { limit: 2, maxPages: 5 });
+    const { matches, truncated } = await client.resolveBuild(
+      { repo: 'acme/repo', prNumber: 1 },
+      { limit: 2, maxPages: 5 },
+    );
     expect(matches).toEqual([]);
     expect(truncated).toBe(false);
   });

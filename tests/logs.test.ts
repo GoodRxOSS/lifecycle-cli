@@ -13,7 +13,7 @@ describe('logStreamWsUrl', () => {
         follow: true,
         tailLines: 200,
         timestamps: false,
-      })
+      }),
     );
     expect(url.protocol).toBe('wss:');
     expect(url.pathname).toBe('/api/logs/stream');
@@ -32,7 +32,7 @@ describe('logStreamWsUrl', () => {
         namespace: 'n',
         containerName: 'c',
         follow: false,
-      })
+      }),
     );
     expect(url.protocol).toBe('ws:');
     expect(url.searchParams.has('tailLines')).toBe(false);

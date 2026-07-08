@@ -12,18 +12,20 @@ function buildUiUrl(ctx: Ctx, uuid: string): string | undefined {
   return ctx.uiUrl ? `${ctx.uiUrl}/environments/${uuid}` : undefined;
 }
 
-function prLabel(build: { pullRequest?: { fullName?: string; pullRequestNumber?: number; title?: string } | null }): string {
+function prLabel(build: {
+  pullRequest?: { fullName?: string; pullRequestNumber?: number; title?: string } | null;
+}): string {
   const pr = build.pullRequest;
   if (!pr) return '';
   return `${pr.fullName}#${pr.pullRequestNumber}`;
 }
 
 function activeDeploys(build: Build): Deploy[] {
-  return (build.deploys ?? []).filter((d) => d.active);
+  return (build.deploys ?? []).filter(d => d.active);
 }
 
 function serviceRows(build: Build): string[][] {
-  return activeDeploys(build).map((d) => [
+  return activeDeploys(build).map(d => [
     d.deployable?.name ?? d.uuid,
     statusColor(d.status),
     d.branchName ?? '',
@@ -33,15 +35,21 @@ function serviceRows(build: Build): string[][] {
 }
 
 function summarizeServices(deploys: Array<{ status: string; active: boolean }>): string {
-  const active = deploys.filter((d) => d.active);
-  const deployed = active.filter((d) => d.status === 'ready' || d.status === 'deployed').length;
-  const failed = active.filter((d) => d.status.includes('error') || d.status.includes('failed')).length;
+  const active = deploys.filter(d => d.active);
+  const deployed = active.filter(d => d.status === 'ready' || d.status === 'deployed').length;
+  const failed = active.filter(d => d.status.includes('error') || d.status.includes('failed')).length;
   let summary = `${deployed}/${active.length}`;
   if (failed > 0) summary += pc.red(` (${failed} failed)`);
   return summary;
 }
 
-async function watchBuild(ctx: Ctx, uuid: string, intervalMs: number, timeoutMs: number, timeoutLabel: string): Promise<void> {
+async function watchBuild(
+  ctx: Ctx,
+  uuid: string,
+  intervalMs: number,
+  timeoutMs: number,
+  timeoutLabel: string,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   const isTty = process.stdout.isTTY;
   let firstRender = true;
@@ -66,7 +74,9 @@ async function watchBuild(ctx: Ctx, uuid: string, intervalMs: number, timeoutMs:
       return;
     }
     if (BUILD_TERMINAL_FAILURE.has(build.status)) {
-      process.stdout.write(`${pc.red('✗')} ${build.uuid} ended in ${build.status}${build.statusMessage ? `: ${build.statusMessage}` : ''}\n`);
+      process.stdout.write(
+        `${pc.red('✗')} ${build.uuid} ended in ${build.status}${build.statusMessage ? `: ${build.statusMessage}` : ''}\n`,
+      );
       process.exitCode = 1;
       return;
     }
@@ -75,7 +85,7 @@ async function watchBuild(ctx: Ctx, uuid: string, intervalMs: number, timeoutMs:
       process.exitCode = 2;
       return;
     }
-    await new Promise((r) => setTimeout(r, intervalMs));
+    await new Promise(r => setTimeout(r, intervalMs));
   }
 }
 
@@ -114,7 +124,9 @@ function renderBuildDetail(ctx: Ctx, build: Build): void {
 async function renderStatusOnce(ctx: Ctx, uuid: string): Promise<Build> {
   const build = await ctx.api.getBuild(uuid);
   const lines: string[] = [];
-  lines.push(`${pc.bold(build.uuid)}  ${statusColor(build.status)}${build.statusMessage ? pc.dim(`  ${build.statusMessage}`) : ''}`);
+  lines.push(
+    `${pc.bold(build.uuid)}  ${statusColor(build.status)}${build.statusMessage ? pc.dim(`  ${build.statusMessage}`) : ''}`,
+  );
   const rows = serviceRows(build);
   if (rows.length > 0) lines.push('', renderTable(['service', 'status', 'branch', 'url', 'updated'], rows));
   process.stdout.write(lines.join('\n') + '\n');
@@ -131,39 +143,50 @@ export function registerBuildsCommands(program: Command): void {
     .option('-m, --mine', 'only my environments (matched via GitHub username)')
     .option('--exclude <statuses>', 'comma-separated statuses to exclude', 'torn_down,pending')
     .option('--all', 'include all statuses (no exclusions)')
-    .option('-p, --page <n>', 'page number', (v) => Number(v), 1)
-    .option('-n, --limit <n>', 'items per page', (v) => Number(v), 25)
+    .option('-p, --page <n>', 'page number', v => Number(v), 1)
+    .option('-n, --limit <n>', 'items per page', v => Number(v), 25)
     .action(
-      runAction(async (ctx, opts: { search?: string; mine?: boolean; exclude: string; all?: boolean; page: number; limit: number }) => {
-        const { items, pagination } = await ctx.api.listBuilds({
-          page: opts.page,
-          limit: opts.limit,
-          search: opts.search,
-          exclude: opts.all ? '' : opts.exclude,
-          myEnvs: opts.mine,
-        });
-        if (ctx.json) {
-          printJson({ builds: items, pagination });
-          return;
-        }
-        if (items.length === 0) {
-          process.stdout.write(pc.dim('No builds found.\n'));
-          return;
-        }
-        const rows = items.map((b) => [
-          pc.bold(b.uuid),
-          statusColor(b.status),
-          prLabel(b),
-          b.pullRequest?.branchName ?? '',
-          b.pullRequest?.githubLogin ?? '',
-          summarizeServices(b.deploys ?? []),
-          formatAge(b.updatedAt),
-        ]);
-        process.stdout.write(renderTable(['uuid', 'status', 'pr', 'branch', 'author', 'services', 'updated'], rows) + '\n');
-        if (pagination?.totalPages && Number(pagination.totalPages) > 1) {
-          process.stdout.write(pc.dim(`page ${pagination.page}/${pagination.totalPages} · ${pagination.totalItems} total · -p <n> for more\n`));
-        }
-      })
+      runAction(
+        async (
+          ctx,
+          opts: { search?: string; mine?: boolean; exclude: string; all?: boolean; page: number; limit: number },
+        ) => {
+          const { items, pagination } = await ctx.api.listBuilds({
+            page: opts.page,
+            limit: opts.limit,
+            search: opts.search,
+            exclude: opts.all ? '' : opts.exclude,
+            myEnvs: opts.mine,
+          });
+          if (ctx.json) {
+            printJson({ builds: items, pagination });
+            return;
+          }
+          if (items.length === 0) {
+            process.stdout.write(pc.dim('No builds found.\n'));
+            return;
+          }
+          const rows = items.map(b => [
+            pc.bold(b.uuid),
+            statusColor(b.status),
+            prLabel(b),
+            b.pullRequest?.branchName ?? '',
+            b.pullRequest?.githubLogin ?? '',
+            summarizeServices(b.deploys ?? []),
+            formatAge(b.updatedAt),
+          ]);
+          process.stdout.write(
+            renderTable(['uuid', 'status', 'pr', 'branch', 'author', 'services', 'updated'], rows) + '\n',
+          );
+          if (pagination?.totalPages && Number(pagination.totalPages) > 1) {
+            process.stdout.write(
+              pc.dim(
+                `page ${pagination.page}/${pagination.totalPages} · ${pagination.totalItems} total · -p <n> for more\n`,
+              ),
+            );
+          }
+        },
+      ),
     );
 
   builds
@@ -180,9 +203,11 @@ export function registerBuildsCommands(program: Command): void {
         renderBuildDetail(ctx, build);
         if (opts.manifest && build.manifest) {
           process.stdout.write(`\n${pc.bold('manifest')}\n`);
-          process.stdout.write(typeof build.manifest === 'string' ? `${build.manifest}\n` : `${JSON.stringify(build.manifest, null, 2)}\n`);
+          process.stdout.write(
+            typeof build.manifest === 'string' ? `${build.manifest}\n` : `${JSON.stringify(build.manifest, null, 2)}\n`,
+          );
         }
-      })
+      }),
     );
 
   builds
@@ -195,7 +220,9 @@ export function registerBuildsCommands(program: Command): void {
       runAction(async (ctx, opts: { pr?: string; branch?: string; repo?: string }) => {
         const selector = parseSelector(opts);
         const target =
-          selector.prNumber !== undefined ? `${selector.repo}#${selector.prNumber}` : `${selector.repo}@${selector.branch}`;
+          selector.prNumber !== undefined
+            ? `${selector.repo}#${selector.prNumber}`
+            : `${selector.repo}@${selector.branch}`;
         const { matches, truncated } = await ctx.api.resolveBuild(selector);
         const chosen = pickBuild(matches);
 
@@ -203,12 +230,12 @@ export function registerBuildsCommands(program: Command): void {
           if (truncated) {
             process.stderr.write(
               `${pc.yellow('!')} No build matched ${target} in the pages scanned — results may be truncated. ` +
-                `Double-check the repo/branch, or read the uuid from the PR comment.\n`
+                `Double-check the repo/branch, or read the uuid from the PR comment.\n`,
             );
             process.exitCode = 1;
           } else {
             process.stderr.write(
-              `${pc.dim(`No build found for ${target}. If the PR was just opened, Lifecycle may not have created the environment yet.`)}\n`
+              `${pc.dim(`No build found for ${target}. If the PR was just opened, Lifecycle may not have created the environment yet.`)}\n`,
             );
             process.exitCode = 3;
           }
@@ -218,20 +245,20 @@ export function registerBuildsCommands(program: Command): void {
 
         // The list payload is trimmed; fetch the full build so output matches `builds get`.
         const build = await ctx.api.getBuild(chosen.uuid);
-        const others = matches.filter((m) => m.uuid !== chosen.uuid).map((m) => m.uuid);
+        const others = matches.filter(m => m.uuid !== chosen.uuid).map(m => m.uuid);
         if (others.length > 0) {
           process.stderr.write(
-            `${pc.yellow('!')} ${matches.length} builds matched ${target}; showing most recent ${pc.bold(chosen.uuid)}. Others: ${others.join(', ')}\n`
+            `${pc.yellow('!')} ${matches.length} builds matched ${target}; showing most recent ${pc.bold(chosen.uuid)}. Others: ${others.join(', ')}\n`,
           );
         }
         if (ctx.json) {
           // Uniform envelope (`found` always present) so callers can branch on it,
           // and multiple matches are visible in JSON, not just on stderr.
-          printJson({ found: true, build, matches: matches.map((m) => m.uuid) });
+          printJson({ found: true, build, matches: matches.map(m => m.uuid) });
           return;
         }
         renderBuildDetail(ctx, build);
-      })
+      }),
     );
 
   builds
@@ -249,7 +276,7 @@ export function registerBuildsCommands(program: Command): void {
               uuid: build.uuid,
               status: build.status,
               statusMessage: build.statusMessage,
-              services: activeDeploys(build).map((d) => ({
+              services: activeDeploys(build).map(d => ({
                 name: d.deployable?.name,
                 status: d.status,
                 statusMessage: d.statusMessage,
@@ -266,7 +293,7 @@ export function registerBuildsCommands(program: Command): void {
         }
 
         await watchBuild(ctx, uuid, parseDuration(opts.interval), parseDuration(opts.timeout), opts.timeout);
-      })
+      }),
     );
 
   builds
@@ -282,10 +309,10 @@ export function registerBuildsCommands(program: Command): void {
         }
         process.stderr.write(`${pc.green('✓')} Redeploy queued for ${pc.bold(uuid)}\n`);
         if (opts.watch) {
-          await new Promise((r) => setTimeout(r, 3000));
+          await new Promise(r => setTimeout(r, 3000));
           await watchBuild(ctx, uuid, 5000, 30 * 60_000, '30m');
         }
-      })
+      }),
     );
 
   builds
@@ -296,7 +323,9 @@ export function registerBuildsCommands(program: Command): void {
       runAction(async (ctx, uuid: string, opts: { yes?: boolean }) => {
         if (!opts.yes) {
           if (!process.stdin.isTTY) throw new Error('Refusing to destroy without --yes in non-interactive mode');
-          const ok = await clack.confirm({ message: `Tear down build ${uuid}? This deletes its namespace and services.` });
+          const ok = await clack.confirm({
+            message: `Tear down build ${uuid}? This deletes its namespace and services.`,
+          });
           if (ok !== true) {
             process.stderr.write('Aborted.\n');
             return;
@@ -305,7 +334,7 @@ export function registerBuildsCommands(program: Command): void {
         const result = await ctx.api.destroyBuild(uuid);
         if (ctx.json) printJson({ uuid, destroy: result ?? 'queued' });
         else process.stderr.write(`${pc.green('✓')} Teardown queued for ${uuid}\n`);
-      })
+      }),
     );
 
   builds
@@ -320,7 +349,7 @@ export function registerBuildsCommands(program: Command): void {
           const ui = buildUiUrl(ctx, build.uuid);
           if (ui) process.stderr.write(`  ${link(ui)}\n`);
         }
-      })
+      }),
     );
 
   builds
@@ -340,19 +369,20 @@ export function registerBuildsCommands(program: Command): void {
           throw new Error('Nothing to change — pass --[no-]static and/or --[no-]track-defaults');
         }
         const build = await ctx.api.patchBuild(uuid, patch);
-        if (ctx.json) printJson({ uuid: build.uuid, isStatic: build.isStatic, trackDefaultBranches: build.trackDefaultBranches });
+        if (ctx.json)
+          printJson({ uuid: build.uuid, isStatic: build.isStatic, trackDefaultBranches: build.trackDefaultBranches });
         else {
           process.stderr.write(`${pc.green('✓')} ${build.uuid} updated\n`);
           process.stdout.write(`  static       ${build.isStatic ? pc.green('yes') : 'no'}\n`);
           process.stdout.write(`  track-defaults  ${build.trackDefaultBranches ? pc.green('yes') : 'no'}\n`);
         }
-      })
+      }),
     );
 
   builds
     .command('webhooks <uuid>')
     .description('List webhook invocations for a build, or trigger them')
-    .option('--invoke', 'invoke the webhooks configured in the build\'s webhooksYaml', false)
+    .option('--invoke', "invoke the webhooks configured in the build's webhooksYaml", false)
     .action(
       runAction(async (ctx, uuid: string, opts: { invoke: boolean }) => {
         if (opts.invoke) {
@@ -370,15 +400,9 @@ export function registerBuildsCommands(program: Command): void {
           process.stdout.write(pc.dim('No webhook invocations.\n'));
           return;
         }
-        const rows = invocations.map((w) => [
-          w.name,
-          w.type,
-          statusColor(w.status),
-          w.runUUID,
-          formatAge(w.createdAt),
-        ]);
+        const rows = invocations.map(w => [w.name, w.type, statusColor(w.status), w.runUUID, formatAge(w.createdAt)]);
         process.stdout.write(renderTable(['name', 'type', 'status', 'run', 'when'], rows) + '\n');
-      })
+      }),
     );
 
   builds
@@ -395,7 +419,7 @@ export function registerBuildsCommands(program: Command): void {
         }
         process.stdout.write(`${link(url)}\n`);
         if (!opts.print) openBrowser(url);
-      })
+      }),
     );
 
   const env = builds.command('env').description('View and set comment env-var overrides on a build');
@@ -419,7 +443,7 @@ export function registerBuildsCommands(program: Command): void {
         };
         print('runtime env overrides', data.runtime);
         print('init env overrides', data.init);
-      })
+      }),
     );
 
   env
@@ -430,7 +454,9 @@ export function registerBuildsCommands(program: Command): void {
       runAction(async (ctx, uuid: string, pairs: string[], opts: { init?: boolean }) => {
         const build = await ctx.api.getBuild(uuid);
         const field = opts.init ? 'commentInitEnv' : 'commentRuntimeEnv';
-        const merged: Record<string, string> = { ...((opts.init ? build.commentInitEnv : build.commentRuntimeEnv) ?? {}) };
+        const merged: Record<string, string> = {
+          ...((opts.init ? build.commentInitEnv : build.commentRuntimeEnv) ?? {}),
+        };
         for (const pair of pairs) {
           const eq = pair.indexOf('=');
           if (eq < 1) throw new Error(`Invalid pair "${pair}" — expected KEY=VALUE`);
@@ -438,8 +464,11 @@ export function registerBuildsCommands(program: Command): void {
         }
         const updated = await ctx.api.patchBuild(uuid, { [field]: merged });
         if (ctx.json) printJson({ runtime: updated.commentRuntimeEnv ?? {}, init: updated.commentInitEnv ?? {} });
-        else process.stderr.write(`${pc.green('✓')} Updated ${opts.init ? 'init' : 'runtime'} env overrides on ${uuid} (${pairs.length} key${pairs.length > 1 ? 's' : ''})\n`);
-      })
+        else
+          process.stderr.write(
+            `${pc.green('✓')} Updated ${opts.init ? 'init' : 'runtime'} env overrides on ${uuid} (${pairs.length} key${pairs.length > 1 ? 's' : ''})\n`,
+          );
+      }),
     );
 
   env
@@ -450,11 +479,16 @@ export function registerBuildsCommands(program: Command): void {
       runAction(async (ctx, uuid: string, keys: string[], opts: { init?: boolean }) => {
         const build = await ctx.api.getBuild(uuid);
         const field = opts.init ? 'commentInitEnv' : 'commentRuntimeEnv';
-        const current: Record<string, string> = { ...((opts.init ? build.commentInitEnv : build.commentRuntimeEnv) ?? {}) };
+        const current: Record<string, string> = {
+          ...((opts.init ? build.commentInitEnv : build.commentRuntimeEnv) ?? {}),
+        };
         for (const key of keys) delete current[key];
         const updated = await ctx.api.patchBuild(uuid, { [field]: current });
         if (ctx.json) printJson({ runtime: updated.commentRuntimeEnv ?? {}, init: updated.commentInitEnv ?? {} });
-        else process.stderr.write(`${pc.green('✓')} Removed ${keys.join(', ')} from ${opts.init ? 'init' : 'runtime'} env overrides on ${uuid}\n`);
-      })
+        else
+          process.stderr.write(
+            `${pc.green('✓')} Removed ${keys.join(', ')} from ${opts.init ? 'init' : 'runtime'} env overrides on ${uuid}\n`,
+          );
+      }),
     );
 }

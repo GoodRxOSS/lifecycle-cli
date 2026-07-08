@@ -21,7 +21,10 @@ const REPO_RE = /^[^/\s]+\/[^/\s]+$/;
 const TORN_DOWN = new Set(['torn_down', 'deleted']);
 
 function normalizeRepo(repo: string): string {
-  return repo.trim().replace(/\.git$/i, '').toLowerCase();
+  return repo
+    .trim()
+    .replace(/\.git$/i, '')
+    .toLowerCase();
 }
 
 function assertRepo(repo: string): string {
@@ -84,7 +87,7 @@ export function parseSelector(input: SelectorInput): Selector {
  */
 export function matchBuilds(builds: BuildListItem[], selector: Selector): BuildListItem[] {
   const repo = normalizeRepo(selector.repo);
-  return builds.filter((b) => {
+  return builds.filter(b => {
     const pr = b.pullRequest;
     if (!pr || !pr.fullName) return false;
     if (pr.fullName.toLowerCase() !== repo) return false;

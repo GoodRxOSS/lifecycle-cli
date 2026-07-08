@@ -2,14 +2,14 @@ import * as p from '@clack/prompts';
 import { Command } from 'commander';
 import pc from 'picocolors';
 
-import { decodeJwt, loginDevice, loginPkce, AuthError } from '../lib/auth.js';
+import { AuthError, decodeJwt, loginDevice, loginPkce } from '../lib/auth.js';
 import {
   configDir,
+  DEFAULT_CLIENT_ID,
+  DEFAULT_PROFILE_NAME,
   loadConfig,
   saveConfig,
   saveTokens,
-  DEFAULT_CLIENT_ID,
-  DEFAULT_PROFILE_NAME,
   type Profile,
 } from '../lib/config.js';
 import { link, printJson } from '../lib/output.js';
@@ -79,7 +79,7 @@ async function runInit(opts: InitOpts): Promise<void> {
     const answer = await p.text({
       message: 'Lifecycle app URL (serves /api/v2)',
       placeholder: 'https://app.lifecycle.example.com',
-      validate: (v) => validUrl(v ?? ''),
+      validate: v => validUrl(v ?? ''),
     });
     if (cancelled(answer)) return;
     apiUrl = answer as string;
@@ -92,7 +92,7 @@ async function runInit(opts: InitOpts): Promise<void> {
       message: 'Lifecycle UI URL (optional, used by `lfc builds open`)',
       placeholder: 'https://ui.lifecycle.example.com — enter to skip',
       defaultValue: '',
-      validate: (v) => (v ? validUrl(v) : undefined),
+      validate: v => (v ? validUrl(v) : undefined),
     });
     if (cancelled(answer)) return;
     uiUrl = (answer as string) || undefined;
@@ -110,7 +110,7 @@ async function runInit(opts: InitOpts): Promise<void> {
     const answer = await p.text({
       message: 'Keycloak realm issuer URL',
       placeholder: 'https://auth.lifecycle.example.com/realms/lifecycle',
-      validate: (v) => validUrl(v ?? ''),
+      validate: v => validUrl(v ?? ''),
     });
     if (cancelled(answer)) return;
     issuer = answer as string;
@@ -146,13 +146,15 @@ async function runInit(opts: InitOpts): Promise<void> {
         onPrompt: ({ userCode, verificationUri, verificationUriComplete }) => {
           process.stderr.write(
             `\nOn any device, open ${link(verificationUriComplete ?? verificationUri)}\n` +
-              `and confirm the code: ${pc.bold(userCode)}\n\nWaiting for approval...\n`
+              `and confirm the code: ${pc.bold(userCode)}\n\nWaiting for approval...\n`,
           );
         },
       })
     : await loginPkce(kc, {
         onAuthUrl: () => {
-          process.stderr.write(`Opening your browser for SSO login... ${pc.dim('(lfc login --device for headless)')}\n`);
+          process.stderr.write(
+            `Opening your browser for SSO login... ${pc.dim('(lfc login --device for headless)')}\n`,
+          );
         },
       });
   saveTokens(opts.name, tokens);

@@ -63,7 +63,10 @@ describe('config', () => {
     fs.chmodSync(configDir(), 0o755);
     fs.chmodSync(configPath(), 0o644);
 
-    saveConfig({ currentProfile: 'default', profiles: { default: { apiUrl: 'https://lc.example.com', authEnabled: false } } });
+    saveConfig({
+      currentProfile: 'default',
+      profiles: { default: { apiUrl: 'https://lc.example.com', authEnabled: false } },
+    });
 
     expect(fs.statSync(configDir()).mode & 0o777).toBe(0o700);
     expect(fs.statSync(configPath()).mode & 0o777).toBe(0o600);

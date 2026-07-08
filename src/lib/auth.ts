@@ -102,14 +102,14 @@ const SUCCESS_HTML = `<!DOCTYPE html><html><head><title>lfc login</title></head>
  */
 export async function loginPkce(
   kc: KeycloakSettings,
-  opts: { noBrowser?: boolean; onAuthUrl: (url: string) => void }
+  opts: { noBrowser?: boolean; onAuthUrl: (url: string) => void },
 ): Promise<TokenSet> {
   const oidc = await discover(kc.issuer);
   const { verifier, challenge } = pkcePair();
   const state = b64url(randomBytes(16));
 
   const server = http.createServer();
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const port = (server.address() as AddressInfo).port;
   const redirectUri = `http://127.0.0.1:${port}/callback`;
 
@@ -179,7 +179,7 @@ interface DeviceAuthResponse {
  */
 export async function loginDevice(
   kc: KeycloakSettings,
-  opts: { onPrompt: (info: { userCode: string; verificationUri: string; verificationUriComplete?: string }) => void }
+  opts: { onPrompt: (info: { userCode: string; verificationUri: string; verificationUriComplete?: string }) => void },
 ): Promise<TokenSet> {
   const oidc = await discover(kc.issuer);
   if (!oidc.device_authorization_endpoint) {
@@ -212,7 +212,7 @@ export async function loginDevice(
   let intervalMs = (device.interval ?? 5) * 1000;
 
   while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, intervalMs));
+    await new Promise(r => setTimeout(r, intervalMs));
     const token = await postForm(oidc.token_endpoint, {
       grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
       client_id: kc.clientId,
@@ -251,7 +251,7 @@ export async function refreshTokens(kc: KeycloakSettings, tokens: TokenSet): Pro
 export async function getAccessToken(
   profileName: string,
   profile: Profile,
-  { forceRefresh = false }: { forceRefresh?: boolean } = {}
+  { forceRefresh = false }: { forceRefresh?: boolean } = {},
 ): Promise<string | null> {
   if (!profile.authEnabled) return null;
   if (!profile.keycloak) throw new AuthError('Profile has authEnabled but no keycloak settings');

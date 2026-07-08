@@ -50,14 +50,14 @@ describe('validateConfigContent', () => {
   it('rejects unknown top-level properties (additionalProperties: false)', () => {
     const result = validateConfigContent(`${VALID}\nbogusKey: true\n`);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.message.includes('bogusKey'))).toBe(true);
+    expect(result.errors.some(e => e.message.includes('bogusKey'))).toBe(true);
   });
 
   it('reports the property path for nested type errors', () => {
     const bad = VALID.replace('branchName: main', 'branchName: [oops]');
     const result = validateConfigContent(bad);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.path.includes('services[0].github.branchName'))).toBe(true);
+    expect(result.errors.some(e => e.path.includes('services[0].github.branchName'))).toBe(true);
   });
 
   it('validates custom formats like webhook type', () => {
@@ -68,11 +68,11 @@ describe('validateConfigContent', () => {
     - name: notify
       type: carrier-pigeon
       state: deployed
-      env: {}`
+      env: {}`,
     );
     const result = validateConfigContent(withWebhook);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.path.includes('webhooks[0].type'))).toBe(true);
+    expect(result.errors.some(e => e.path.includes('webhooks[0].type'))).toBe(true);
   });
 
   it('flags empty files', () => {

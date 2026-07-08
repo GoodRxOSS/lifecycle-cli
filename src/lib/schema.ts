@@ -15,7 +15,7 @@ function stripComments(node: unknown): unknown {
     return Object.fromEntries(
       Object.entries(node)
         .filter(([key]) => key !== 'comment')
-        .map(([key, value]) => [key, stripComments(value)])
+        .map(([key, value]) => [key, stripComments(value)]),
     );
   }
   return node;
@@ -61,12 +61,12 @@ const WEBHOOK_STATES = [
 const DISK_ACCESS_MODES = ['readwriteonce', 'readonlymany', 'readwritemany', 'readwriteoncepod'];
 const CAPACITY_TYPES = ['on_demand', 'spot'];
 
-JsonSchema.Validator.prototype.customFormats.webhookType = (input) => WEBHOOK_TYPES.includes(input);
-JsonSchema.Validator.prototype.customFormats.webhookState = (input) =>
+JsonSchema.Validator.prototype.customFormats.webhookType = input => WEBHOOK_TYPES.includes(input);
+JsonSchema.Validator.prototype.customFormats.webhookState = input =>
   typeof input === 'string' && WEBHOOK_STATES.includes(input.toLowerCase());
-JsonSchema.Validator.prototype.customFormats.diskAccessMode = (input) =>
+JsonSchema.Validator.prototype.customFormats.diskAccessMode = input =>
   typeof input === 'string' && DISK_ACCESS_MODES.includes(input.toLowerCase());
-JsonSchema.Validator.prototype.customFormats.capacityType = (input) =>
+JsonSchema.Validator.prototype.customFormats.capacityType = input =>
   typeof input === 'string' && CAPACITY_TYPES.includes(input.toLowerCase());
 
 /**
@@ -91,7 +91,7 @@ export function findConfigFile(input?: string): string {
     if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
   }
   throw new ConfigFileNotFoundError(
-    `No lifecycle config found in ${target} (looked for ${CONFIG_FILE_CANDIDATES.join(', ')})`
+    `No lifecycle config found in ${target} (looked for ${CONFIG_FILE_CANDIDATES.join(', ')})`,
   );
 }
 
@@ -128,7 +128,7 @@ export function validateConfigContent(content: string): SchemaValidationResult {
     valid: result.valid,
     schemaVersion: '1.0.0',
     declaredVersion,
-    errors: result.errors.map((e) => ({
+    errors: result.errors.map(e => ({
       path: e.property.replace(/^instance\.?/, '') || '(root)',
       message: e.message,
     })),

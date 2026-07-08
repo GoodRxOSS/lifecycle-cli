@@ -30,9 +30,15 @@
     "build": "tsup",
     "dev": "tsx src/index.ts",
     "generate:api": "rm -rf ./src/lib/generated && orval --config ./orval.config.ts && node ./scripts/fix-generated-imports.mjs",
+    "lint": "eslint .",
+    "format": "prettier \"**/*.{ts,js,mjs,cjs,json,md}\"",
+    "format:check": "pnpm format --check",
+    "format:write": "pnpm format --write",
+    "validate": "pnpm format:write && pnpm lint && pnpm typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
   },
   "dependencies": {
     "@clack/prompts": "^0.11.0",
@@ -44,14 +50,23 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@types/archiver": "^6.0.3",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.0.0",
     "dotenv": "^17.2.3",
+    "eslint": "^9",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.7.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
     "orval": "7.4.1",
+    "prettier": "3.6.2",
     "tsup": "^8.5.0",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0",
+    "typescript-eslint": "^8.63.0",
     "vitest": "^3.2.0"
   }
 }

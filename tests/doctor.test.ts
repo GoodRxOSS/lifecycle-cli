@@ -33,7 +33,7 @@ describe('runDoctor', () => {
     const report = runDoctor();
 
     expect(report.ok).toBe(false);
-    expect(report.checks.some((check) => check.id === 'config_profile' && check.status === 'warn')).toBe(true);
+    expect(report.checks.some(check => check.id === 'config_profile' && check.status === 'warn')).toBe(true);
   });
 
   it('repairs loose config and token permissions with fix=true', () => {
@@ -59,10 +59,10 @@ describe('runDoctor', () => {
     fs.chmodSync(tokensPath('default'), 0o644);
 
     const before = runDoctor();
-    expect(before.checks.some((check) => check.fixable && check.status === 'warn')).toBe(true);
+    expect(before.checks.some(check => check.fixable && check.status === 'warn')).toBe(true);
 
     const after = runDoctor({ fix: true });
-    expect(after.checks.filter((check) => check.fixed).length).toBeGreaterThanOrEqual(4);
+    expect(after.checks.filter(check => check.fixed).length).toBeGreaterThanOrEqual(4);
     expect(fs.statSync(configDir()).mode & 0o777).toBe(0o700);
     expect(fs.statSync(configPath()).mode & 0o777).toBe(0o600);
     expect(fs.statSync(tokensDir()).mode & 0o777).toBe(0o700);

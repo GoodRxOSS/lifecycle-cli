@@ -1,16 +1,16 @@
 import type {
-  Build as GeneratedBuild,
-  Deploy as GeneratedDeploy,
-  Deployable as GeneratedDeployable,
   DeploymentJobInfo,
   DeploymentPodContainerInfo,
   EnvironmentPodInfo,
+  Build as GeneratedBuild,
+  Deploy as GeneratedDeploy,
+  Deployable as GeneratedDeployable,
+  PaginationMetadata as GeneratedPaginationMetadata,
+  SitesConfig as GeneratedSitesConfig,
   LogStreamResponse,
   NativeBuildJobInfo,
-  PaginationMetadata as GeneratedPaginationMetadata,
   PullRequest,
   Site,
-  SitesConfig as GeneratedSitesConfig,
   SitesUploadConfig,
   WebhookInvocation,
 } from './generated/index.js';
@@ -61,7 +61,16 @@ export interface ServiceOverrideState {
 
 export type Deploy = Omit<
   Partial<GeneratedDeploy>,
-  'deployable' | 'repository' | 'serviceOverride' | 'status' | 'statusMessage' | 'cname' | 'branchName' | 'publicUrl' | 'dockerImage' | 'sha'
+  | 'deployable'
+  | 'repository'
+  | 'serviceOverride'
+  | 'status'
+  | 'statusMessage'
+  | 'cname'
+  | 'branchName'
+  | 'publicUrl'
+  | 'dockerImage'
+  | 'sha'
 > & {
   id?: number;
   uuid: string;

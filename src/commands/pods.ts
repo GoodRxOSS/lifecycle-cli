@@ -8,7 +8,7 @@ import { printJson, renderTable, statusColor } from '../lib/output.js';
 import type { PodInfo } from '../lib/types.js';
 
 function podRows(pods: PodInfo[]): string[][] {
-  return pods.map((pod) => [
+  return pods.map(pod => [
     pod.podName,
     pod.serviceName ?? '',
     String(pod.ready),
@@ -24,31 +24,31 @@ async function fetchPods(ctx: Ctx, uuid: string, service?: string): Promise<PodI
 
 async function pickPod(pods: PodInfo[], podName?: string): Promise<PodInfo> {
   if (podName) {
-    const pod = pods.find((x) => x.podName === podName);
+    const pod = pods.find(x => x.podName === podName);
     if (!pod) throw new Error(`Pod ${podName} not found (run lfc pods list first)`);
     return pod;
   }
   if (pods.length === 1) return pods[0]!;
   if (!process.stdin.isTTY) {
-    throw new Error(`Multiple pods found — specify one: ${pods.map((x) => x.podName).join(', ')}`);
+    throw new Error(`Multiple pods found — specify one: ${pods.map(x => x.podName).join(', ')}`);
   }
   const picked = await p.select({
     message: 'Select a pod',
-    options: pods.map((pod) => ({
+    options: pods.map(pod => ({
       value: pod.podName,
       label: pod.podName,
       hint: `${pod.serviceName ?? ''} ${pod.status} ${pod.ready} restarts:${pod.restarts}`.trim(),
     })),
   });
   if (p.isCancel(picked)) throw new Error('cancelled');
-  return pods.find((x) => x.podName === picked)!;
+  return pods.find(x => x.podName === picked)!;
 }
 
 async function pickContainer(pod: PodInfo, containerName?: string): Promise<string> {
   const containers = pod.containers ?? [];
   if (containerName) {
-    if (containers.length > 0 && !containers.some((c) => c.name === containerName)) {
-      throw new Error(`Container ${containerName} not in pod (has: ${containers.map((c) => c.name).join(', ')})`);
+    if (containers.length > 0 && !containers.some(c => c.name === containerName)) {
+      throw new Error(`Container ${containerName} not in pod (has: ${containers.map(c => c.name).join(', ')})`);
     }
     return containerName;
   }
@@ -62,7 +62,7 @@ async function pickContainer(pod: PodInfo, containerName?: string): Promise<stri
   }
   const picked = await p.select({
     message: 'Select a container',
-    options: containers.map((c) => ({ value: c.name, label: c.name, hint: c.state })),
+    options: containers.map(c => ({ value: c.name, label: c.name, hint: c.state })),
     initialValue: containers[containers.length - 1]!.name,
   });
   if (p.isCancel(picked)) throw new Error('cancelled');
@@ -70,7 +70,7 @@ async function pickContainer(pod: PodInfo, containerName?: string): Promise<stri
 }
 
 export function registerPodsCommands(program: Command): void {
-  const pods = program.command('pods').description('Pods running in a build\'s namespace');
+  const pods = program.command('pods').description("Pods running in a build's namespace");
 
   pods
     .command('list <buildUuid>')
@@ -87,14 +87,18 @@ export function registerPodsCommands(program: Command): void {
           process.stdout.write(pc.dim('No pods found.\n'));
           return;
         }
-        process.stdout.write(renderTable(['pod', 'service', 'ready', 'status', 'restarts', 'age'], podRows(list)) + '\n');
-        const multi = list.filter((pod) => (pod.containers?.length ?? 0) > 1);
+        process.stdout.write(
+          renderTable(['pod', 'service', 'ready', 'status', 'restarts', 'age'], podRows(list)) + '\n',
+        );
+        const multi = list.filter(pod => (pod.containers?.length ?? 0) > 1);
         for (const pod of multi) {
           process.stdout.write(
-            pc.dim(`  ${pod.podName} containers: ${pod.containers.map((c) => `${c.name}(${c.state ?? '?'})`).join(', ')}\n`)
+            pc.dim(
+              `  ${pod.podName} containers: ${pod.containers.map(c => `${c.name}(${c.state ?? '?'})`).join(', ')}\n`,
+            ),
           );
         }
-      })
+      }),
     );
 
   pods
@@ -111,7 +115,7 @@ export function registerPodsCommands(program: Command): void {
           ctx,
           buildUuid: string,
           podName: string | undefined,
-          opts: { service?: string; container?: string; follow: boolean; tail: string; timestamps: boolean }
+          opts: { service?: string; container?: string; follow: boolean; tail: string; timestamps: boolean },
         ) => {
           const build = await ctx.api.getBuild(buildUuid);
           const namespace = build.namespace || `env-${buildUuid}`;
@@ -131,9 +135,9 @@ export function registerPodsCommands(program: Command): void {
               tailLines,
               timestamps: opts.timestamps,
             },
-            { quiet: ctx.quiet || ctx.json }
+            { quiet: ctx.quiet || ctx.json },
           );
-        }
-      )
+        },
+      ),
     );
 }

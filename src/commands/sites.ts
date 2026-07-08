@@ -39,7 +39,19 @@ function userEmail(ctx: Ctx): string | undefined {
   }
 }
 
-function printSite(ctx: Ctx, site: { id: string; url: string; name?: string | null; status: string; expiresAt?: string | null; fileCount?: number; sizeBytes?: number }, verb: string): void {
+function printSite(
+  ctx: Ctx,
+  site: {
+    id: string;
+    url: string;
+    name?: string | null;
+    status: string;
+    expiresAt?: string | null;
+    fileCount?: number;
+    sizeBytes?: number;
+  },
+  verb: string,
+): void {
   if (ctx.json) {
     printJson(site);
     return;
@@ -54,14 +66,17 @@ function printSite(ctx: Ctx, site: { id: string; url: string; name?: string | nu
 }
 
 export function registerSitesCommands(program: Command): void {
-  const sites = program.command('sites').alias('site').description('Host static sites (HTML/ZIP/directory) on Lifecycle');
+  const sites = program
+    .command('sites')
+    .alias('site')
+    .description('Host static sites (HTML/ZIP/directory) on Lifecycle');
 
   sites
     .command('list')
     .description('List hosted sites')
     .option('-m, --mine', 'only sites created/updated by me')
-    .option('-p, --page <n>', 'page number', (v) => Number(v), 1)
-    .option('-n, --limit <n>', 'items per page', (v) => Number(v), 25)
+    .option('-p, --page <n>', 'page number', v => Number(v), 1)
+    .option('-n, --limit <n>', 'items per page', v => Number(v), 25)
     .action(
       runAction(async (ctx, opts: { mine?: boolean; page: number; limit: number }) => {
         const user = opts.mine ? userEmail(ctx) : undefined;
@@ -75,7 +90,7 @@ export function registerSitesCommands(program: Command): void {
           process.stdout.write(pc.dim('No sites found.\n'));
           return;
         }
-        const rows = items.map((s) => [
+        const rows = items.map(s => [
           pc.bold(s.id),
           s.name ?? '',
           statusColor(s.status),
@@ -84,11 +99,15 @@ export function registerSitesCommands(program: Command): void {
           s.expiresAt ? formatAge(s.expiresAt).replace(' ago', '') : '∞',
           s.createdBy ?? '',
         ]);
-        process.stdout.write(renderTable(['id', 'name', 'status', 'url', 'size', 'expires in', 'created by'], rows) + '\n');
+        process.stdout.write(
+          renderTable(['id', 'name', 'status', 'url', 'size', 'expires in', 'created by'], rows) + '\n',
+        );
         if (pagination?.totalPages && Number(pagination.totalPages) > 1) {
-          process.stdout.write(pc.dim(`page ${pagination.page}/${pagination.totalPages} · ${pagination.totalItems} total\n`));
+          process.stdout.write(
+            pc.dim(`page ${pagination.page}/${pagination.totalPages} · ${pagination.totalItems} total\n`),
+          );
         }
-      })
+      }),
     );
 
   sites
@@ -105,12 +124,12 @@ export function registerSitesCommands(program: Command): void {
         } finally {
           await upload.cleanup();
         }
-      })
+      }),
     );
 
   sites
     .command('get <siteId>')
-    .description('Show a site\'s details')
+    .description("Show a site's details")
     .action(
       runAction(async (ctx, siteId: string) => {
         const site = await ctx.api.getSite(siteId);
@@ -130,12 +149,12 @@ export function registerSitesCommands(program: Command): void {
         for (const [k, v] of fields) {
           if (v.trim()) process.stdout.write(`  ${pc.dim(k.padEnd(8))} ${v}\n`);
         }
-      })
+      }),
     );
 
   sites
     .command('update <siteId> <path>')
-    .description('Replace a site\'s content with a new .zip, .html file, or directory')
+    .description("Replace a site's content with a new .zip, .html file, or directory")
     .action(
       runAction(async (ctx, siteId: string, target: string) => {
         const upload = await prepareUpload(ctx, target);
@@ -146,21 +165,21 @@ export function registerSitesCommands(program: Command): void {
         } finally {
           await upload.cleanup();
         }
-      })
+      }),
     );
 
   sites
     .command('extend <siteId>')
-    .description('Extend a site\'s expiration (TTL)')
+    .description("Extend a site's expiration (TTL)")
     .action(
       runAction(async (ctx, siteId: string) => {
         const site = await ctx.api.extendSite(siteId);
         if (ctx.json) printJson(site);
         else
           process.stderr.write(
-            `${pc.green('✓')} Extended ${pc.bold(site.id)} — now expires ${site.expiresAt ? new Date(site.expiresAt).toLocaleString() : 'never'}\n`
+            `${pc.green('✓')} Extended ${pc.bold(site.id)} — now expires ${site.expiresAt ? new Date(site.expiresAt).toLocaleString() : 'never'}\n`,
           );
-      })
+      }),
     );
 
   sites
@@ -180,6 +199,6 @@ export function registerSitesCommands(program: Command): void {
         const site = await ctx.api.deleteSite(siteId);
         if (ctx.json) printJson(site);
         else process.stderr.write(`${pc.green('✓')} Deleted site ${siteId}\n`);
-      })
+      }),
     );
 }

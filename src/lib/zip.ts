@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -43,9 +43,11 @@ function extensionFor(filePath: string): string {
 
 function assertAllowedExtension(filePath: string, allowedExtensions: string[]): void {
   const ext = extensionFor(filePath);
-  const allowed = new Set(allowedExtensions.map((item) => item.toLowerCase().replace(/^\./, '')));
+  const allowed = new Set(allowedExtensions.map(item => item.toLowerCase().replace(/^\./, '')));
   if (!ext || !allowed.has(ext)) {
-    throw new Error(`Unsupported file type "${ext ? `.${ext}` : '(none)'}" — allowed extensions: ${allowedExtensions.join(', ')}`);
+    throw new Error(
+      `Unsupported file type "${ext ? `.${ext}` : '(none)'}" — allowed extensions: ${allowedExtensions.join(', ')}`,
+    );
   }
 }
 
@@ -66,7 +68,9 @@ async function loadSiteIgnore(root: string): Promise<string[]> {
 }
 
 async function collectFiles(root: string, allowedExtensions: string[]): Promise<SiteUploadFile[]> {
-  const ig = createIgnore().add(DEFAULT_SITE_IGNORE_PATTERNS).add(await loadSiteIgnore(root));
+  const ig = createIgnore()
+    .add(DEFAULT_SITE_IGNORE_PATTERNS)
+    .add(await loadSiteIgnore(root));
   const files: SiteUploadFile[] = [];
 
   async function walk(dir: string): Promise<void> {
@@ -135,7 +139,9 @@ export async function prepareSiteUpload(target: string, config: SitesCliConfig):
     const files = await collectFiles(resolved, allowedExtensions);
     if (files.length === 0) throw new Error('No uploadable files found');
     if (files.length > maxFiles) {
-      throw new Error(`Directory contains ${files.length} uploadable files, which exceeds the configured limit of ${maxFiles}`);
+      throw new Error(
+        `Directory contains ${files.length} uploadable files, which exceeds the configured limit of ${maxFiles}`,
+      );
     }
 
     const extractedBytes = files.reduce((total, file) => total + file.size, 0);

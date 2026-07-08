@@ -40,7 +40,7 @@ docs/plan.html        # living plan/architecture/testing document
 - **API types**: generated schemas come from the same OpenAPI docs endpoint as lifecycle-ui. Set
   `NEXT_PUBLIC_API_URL` or `LIFECYCLE_API_URL`, then run `pnpm generate:api`. Keep CLI-specific
   nullability/backward-compatibility in `src/lib/types.ts`, not in generated files.
-- **Output discipline**: data → stdout; progress/confirmation chatter → stderr; `--json` must emit *only* JSON on stdout.
+- **Output discipline**: data → stdout; progress/confirmation chatter → stderr; `--json` must emit _only_ JSON on stdout.
 - **Interactivity**: prompts (`@clack/prompts`) only when stdin is a TTY; every prompt needs a flag escape hatch (`--yes`, `--device`, …) so agents can run non-interactively.
 - **Auth**: never log tokens; token files are 0600. Anything touching the live Keycloak realm must be additive-only.
 - Strict TypeScript; keep new code passing `pnpm typecheck` with `noUncheckedIndexedAccess`.

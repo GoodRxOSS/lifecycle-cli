@@ -36,7 +36,7 @@ export function buildCtx(cmd: Command): Ctx {
 
 /** Wrap a command action: build ctx, run, and convert known errors into friendly exits. */
 export function runAction<A extends unknown[]>(
-  fn: (ctx: Ctx, ...args: A) => Promise<void>
+  fn: (ctx: Ctx, ...args: A) => Promise<void>,
 ): (...args: [...A, Command]) => Promise<void> {
   return async (...args) => {
     const cmd = args[args.length - 1] as Command;
@@ -57,7 +57,13 @@ export function runAction<A extends unknown[]>(
         process.stderr.write(`${pc.red(`api error (${err.status}):`)} ${err.message}${reqId}\n`);
         const exitCode = err.status === 404 ? 3 : 1;
         process.exitCode = exitCode;
-        outcome = { status: 'error', exitCode, errorClass: 'ApiError', errorHttpStatus: err.status, errorCode: err.code };
+        outcome = {
+          status: 'error',
+          exitCode,
+          errorClass: 'ApiError',
+          errorHttpStatus: err.status,
+          errorCode: err.code,
+        };
       } else {
         process.stderr.write(`${pc.red('error:')} ${(err as Error).message}\n`);
         process.exitCode = 1;
