@@ -218,14 +218,16 @@ export function registerBuildsCommands(program: Command): void {
 
         // The list payload is trimmed; fetch the full build so output matches `builds get`.
         const build = await ctx.api.getBuild(chosen.uuid);
-        if (matches.length > 1) {
-          const others = matches.filter((m) => m.uuid !== chosen.uuid).map((m) => m.uuid);
+        const others = matches.filter((m) => m.uuid !== chosen.uuid).map((m) => m.uuid);
+        if (others.length > 0) {
           process.stderr.write(
             `${pc.yellow('!')} ${matches.length} builds matched ${target}; showing most recent ${pc.bold(chosen.uuid)}. Others: ${others.join(', ')}\n`
           );
         }
         if (ctx.json) {
-          printJson(build);
+          // Uniform envelope (`found` always present) so callers can branch on it,
+          // and multiple matches are visible in JSON, not just on stderr.
+          printJson({ found: true, build, matches: matches.map((m) => m.uuid) });
           return;
         }
         renderBuildDetail(ctx, build);

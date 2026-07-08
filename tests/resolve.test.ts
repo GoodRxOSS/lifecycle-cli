@@ -58,6 +58,11 @@ describe('parsePrUrl', () => {
     expect(parsePrUrl('https://gitlab.com/acme/storefront/pull/1')).toBeNull();
     expect(parsePrUrl('just-a-branch')).toBeNull();
   });
+
+  it('does not match github.com look-alike hosts', () => {
+    expect(parsePrUrl('https://notgithub.com/acme/storefront/pull/1')).toBeNull();
+    expect(parsePrUrl('https://github.com.evil.example/acme/storefront/pull/1')).toBeNull();
+  });
 });
 
 describe('parseSelector', () => {
@@ -152,5 +157,10 @@ describe('pickBuild', () => {
       mk({ uuid: 'newer', updatedAt: '2026-06-01T00:00:00Z' }),
     ]);
     expect(picked?.uuid).toBe('newer');
+  });
+
+  it('sorts builds with missing/invalid dates last', () => {
+    const picked = pickBuild([mk({ uuid: 'nodate' }), mk({ uuid: 'dated', updatedAt: '2026-01-01T00:00:00Z' })]);
+    expect(picked?.uuid).toBe('dated');
   });
 });

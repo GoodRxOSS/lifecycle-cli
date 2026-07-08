@@ -138,10 +138,11 @@ export class ApiClient {
     const maxPages = opts.maxPages ?? 20;
     const matches: BuildListItem[] = [];
     for (let page = 1; page <= maxPages; page++) {
-      const { items, pagination } = await this.listBuilds({ page, limit, search: selector.repo, exclude: '' });
+      const { items } = await this.listBuilds({ page, limit, search: selector.repo, exclude: '' });
       matches.push(...matchBuilds(items, selector));
-      const totalPages = Number(pagination?.totalPages ?? 1);
-      if (items.length === 0 || page >= totalPages) return { matches, truncated: false };
+      // A short (or empty) page is the last page — more robust than trusting totalPages.
+      if (items.length < limit) return { matches, truncated: false };
+      // Full page and we've hit the cap: more results may remain unscanned.
       if (page >= maxPages) return { matches, truncated: true };
     }
     return { matches, truncated: false };

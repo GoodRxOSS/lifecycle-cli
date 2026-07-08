@@ -164,8 +164,10 @@ Find the build for a PR or branch (preferred — resolves straight to the build)
     lfc builds find --pr https://github.com/org/repo/pull/123 --json   # PR URL is self-contained
     lfc builds find --pr 123 --repo org/repo --json                    # bare number needs --repo
     lfc builds find --branch my-branch --repo org/repo --json          # branch needs --repo
-    # Output is the resolved build (same shape as "builds get"). Exit codes:
-    #   0 = found   3 = no build yet (e.g. PR just opened, not built)   1 = ambiguous/truncated
+    # --json emits {found, build, matches}: build is the chosen one (most recent; live
+    # preferred over torn-down); matches lists ALL matching uuids (length > 1 = ambiguous).
+    # Exit codes: 0 = found   3 = no build yet (e.g. PR just opened, not built)
+    #             1 = scan truncated before resolving (narrow with --repo / read the PR comment)
     # The CLI does not read local git — you supply the PR/branch (get it however you like,
     # e.g. from git or gh). Fallback for fuzzy lookups: lfc builds list --search <text> --json.
 

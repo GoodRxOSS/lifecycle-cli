@@ -99,7 +99,7 @@ lfc builds find --pr 123 --repo org/repo                    # bare number needs 
 lfc builds find --branch my-branch --repo org/repo          # branch needs --repo
 ```
 
-Prints the resolved build (same as `builds get`). Exit `0` found, `3` no build yet (e.g. the PR was just opened), `1` ambiguous/truncated. The CLI doesn't read local git — you supply the PR/branch (from `git`, `gh`, wherever), keeping it a pure Lifecycle client.
+Prints the resolved build (with `--json`: `{found, build, matches}` — `matches` lists every matching uuid, so more than one means ambiguous). Exit `0` found, `3` no build yet (e.g. the PR was just opened), `1` scan truncated before resolving. The CLI doesn't read local git — you supply the PR/branch (from `git`, `gh`, wherever), keeping it a pure Lifecycle client.
 
 ### Env-var overrides (the “PR comment” overrides)
 

@@ -14,7 +14,9 @@ export interface SelectorInput {
   repo?: string;
 }
 
-const PR_URL_RE = /github\.com\/([^/\s]+)\/([^/\s]+?)\/pull\/(\d+)/i;
+// Anchor github.com to a host boundary (start or after "//") so look-alikes
+// like "notgithub.com/..." don't match.
+const PR_URL_RE = /(?:^|\/\/)(?:www\.)?github\.com\/([^/\s]+)\/([^/\s]+?)\/pull\/(\d+)/i;
 const REPO_RE = /^[^/\s]+\/[^/\s]+$/;
 const TORN_DOWN = new Set(['torn_down', 'deleted']);
 
@@ -86,6 +88,8 @@ export function matchBuilds(builds: BuildListItem[], selector: Selector): BuildL
     const pr = b.pullRequest;
     if (!pr || !pr.fullName) return false;
     if (pr.fullName.toLowerCase() !== repo) return false;
+    // repo is compared case-insensitively (GitHub owner/name are); branch is
+    // compared exactly, since git branch names are case-sensitive.
     if (selector.prNumber !== undefined) return pr.pullRequestNumber === selector.prNumber;
     return pr.branchName === selector.branch;
   });
