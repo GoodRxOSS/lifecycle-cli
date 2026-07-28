@@ -105,7 +105,6 @@ export type Build = Omit<
   isStatic?: boolean;
   trackDefaultBranches?: boolean;
   kind?: string;
-  enableFullYaml?: boolean;
   webhooksYaml?: string | null;
   createdAt?: string;
   updatedAt?: string;
