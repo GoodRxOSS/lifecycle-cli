@@ -159,15 +159,22 @@ Runs fully offline (no auth needed) except `--repo/--branch`. Exit codes: `0` va
 
 Upload a ZIP, a single HTML file, or a directory (auto-zipped) and get a stable URL back:
 
+User and personal-key uploads are private by default. Service-key uploads default to public for automation. An explicit unsupported visibility is rejected before upload. Only the owner can replace, extend, delete, or change visibility. Public sites allow anyone with the link to view them.
+
+Use `openUrl` for a stable opening link. Making a public site private retires its old content URL; saved copies cannot be recalled. Named-user sharing is not included in this version.
+
 ```bash
 lfc sites create ./report.html --name "perf report"
 # ✓ Created site a1b2c3d4e5 (perf report)
 # https://a1b2c3d4e5.sites.lifecycle.example.com
 
 lfc sites create ./dist                  # whole directory
+lfc sites create ./dist --visibility public --yes
 lfc sites list --mine
+lfc sites list --public --search report
 lfc sites get a1b2c3d4e5
 lfc sites update a1b2c3d4e5 ./dist       # replace content (new version)
+lfc sites visibility a1b2c3d4e5 private --yes
 lfc sites extend a1b2c3d4e5              # push out the TTL/expiry
 lfc sites delete a1b2c3d4e5 --yes
 ```
@@ -185,7 +192,7 @@ Add a `.lfcsiteignore` file to the uploaded directory for additional ignore patt
 ```bash
 # Examples
 lfc builds get my-env --json | jq '.deploys[] | {name: .deployable.name, url: .publicUrl}'
-lfc sites create ./coverage --json | jq -r .url
+lfc sites create ./coverage --json | jq -r .openUrl
 lfc builds status my-env --watch && run-smoke-tests "$(lfc builds get my-env --json | jq -r '.deploys[0].publicUrl')"
 ```
 

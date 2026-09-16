@@ -5,12 +5,11 @@
  * API documentation for lifecycle
  * OpenAPI spec version: 2.0.0
  */
+import type { ListSitesView } from './listSitesView.js';
 
 export type ListSitesParams = {
-/**
- * Filters to sites created or last updated by the supplied user email.
- */
-user?: string;
+view?: ListSitesView;
+q?: string;
 /**
  * Page number for pagination.
  */

@@ -6,7 +6,6 @@ import type {
   Deploy as GeneratedDeploy,
   Deployable as GeneratedDeployable,
   PaginationMetadata as GeneratedPaginationMetadata,
-  SitesConfig as GeneratedSitesConfig,
   LogStreamResponse,
   NativeBuildJobInfo,
   PullRequest,
@@ -36,12 +35,7 @@ export interface SitesCliConfig {
   upload: SitesUploadConfig;
 }
 
-export interface SitesConfigCacheResponse {
-  configs?: { sites?: GeneratedSitesConfig };
-  sites?: GeneratedSitesConfig;
-  config?: { sites?: GeneratedSitesConfig };
-  data?: { sites?: GeneratedSitesConfig };
-}
+export type { SiteVisibility, SitesCapabilities } from './generated/index.js';
 
 export type PullRequestSummary = PullRequest;
 
