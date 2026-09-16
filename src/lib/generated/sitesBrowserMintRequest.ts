@@ -5,7 +5,16 @@
  * API documentation for lifecycle
  * OpenAPI spec version: 2.0.0
  */
-import type { SitesBrowserLoginRequest } from './sitesBrowserLoginRequest.js';
-import type { SitesBrowserMintRequestAllOf } from './sitesBrowserMintRequestAllOf.js';
 
-export type SitesBrowserMintRequest = SitesBrowserLoginRequest & SitesBrowserMintRequestAllOf;
+export interface SitesBrowserMintRequest {
+  /**
+   * Site identifier matching the bootstrap challenge.
+   * @pattern ^[a-z0-9-]{1,64}$
+   */
+  siteId: string;
+  /**
+   * Opaque, unexpired bootstrap challenge issued by the content gateway.
+   * @pattern ^[A-Za-z0-9_-]{43}$
+   */
+  state: string;
+}

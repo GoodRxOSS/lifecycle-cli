@@ -6,6 +6,7 @@
  * OpenAPI spec version: 2.0.0
  */
 
-export type BindSitesBrowserLogin200Data = {
-  bound: boolean;
+export type MintSitesBrowserTicket200Data = {
+  ticket: string;
+  consumeUrl: string;
 };
