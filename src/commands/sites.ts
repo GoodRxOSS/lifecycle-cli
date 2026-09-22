@@ -30,7 +30,7 @@ async function confirmVisibility(visibility: SiteVisibility, yes?: boolean): Pro
     message:
       visibility === 'public'
         ? 'Publish this site so anyone with the link can view it?'
-        : 'Make this site private? Its current content URL will stop working. Saved copies cannot be recalled.',
+        : 'Make this site private? Its URL stays the same, but saved copies cannot be recalled.',
   });
   if (ok !== true) {
     process.stderr.write('Aborted.\n');
