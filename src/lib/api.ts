@@ -1,5 +1,6 @@
 import { getAccessToken } from './auth.js';
 import type { Profile } from './config.js';
+import type { ListSitesParams } from './generated/index.js';
 import { matchBuilds, type Selector } from './resolve.js';
 import type {
   ApiEnvelope,
@@ -12,8 +13,8 @@ import type {
   PodInfo,
   ServiceOverrideState,
   Site,
-  SitesCliConfig,
-  SitesConfigCacheResponse,
+  SitesCapabilities,
+  SiteVisibility,
   WebhookInvocation,
 } from './types.js';
 
@@ -256,21 +257,24 @@ export class ApiClient {
 
   // --- sites ---
 
-  async listSites(params: { page?: number; limit?: number; user?: string }): Promise<ListResult<Site>> {
+  async listSites(params: ListSitesParams): Promise<ListResult<Site>> {
     const env = await this.request<{ sites: Site[] }>('GET', '/api/v2/sites', {
-      query: { page: params.page, limit: params.limit, user: params.user },
+      query: { page: params.page, limit: params.limit, view: params.view, q: params.q },
     });
     return { items: env.data?.sites ?? [], pagination: env.metadata?.pagination };
   }
 
-  async getSitesConfig(): Promise<SitesCliConfig> {
-    const env = await this.request<SitesConfigCacheResponse>('GET', '/api/v1/config/cache');
-    const sites = env.data?.configs?.sites ?? env.data?.sites ?? env.data?.config?.sites ?? env.data?.data?.sites;
-    if (!sites) throw new ApiError('Could not load sites lifecycle. Try again later.', 0, env.request_id);
-    return {
-      enabled: sites.enabled,
-      upload: sites.upload,
-    };
+  async getSitesCapabilities(): Promise<SitesCapabilities> {
+    const env = await this.request<SitesCapabilities>('GET', '/api/v2/sites/capabilities');
+    if (!env.data) throw new ApiError('Could not load Sites capabilities.', 0, env.request_id);
+    return env.data;
+  }
+
+  async setSiteVisibility(siteId: string, visibility: SiteVisibility, expectedAccessRevision: number): Promise<Site> {
+    const env = await this.request<{ site: Site }>('PATCH', `/api/v2/sites/${encodeURIComponent(siteId)}/access`, {
+      json: { visibility, expectedAccessRevision },
+    });
+    return (env.data as { site: Site }).site;
   }
 
   async createSite(form: FormData): Promise<Site> {
@@ -283,13 +287,17 @@ export class ApiClient {
     return (env.data as { site: Site }).site;
   }
 
-  async deleteSite(siteId: string): Promise<Site> {
-    const env = await this.request<{ site: Site }>('DELETE', `/api/v2/sites/${encodeURIComponent(siteId)}`);
+  async deleteSite(siteId: string, expectedAccessRevision?: number): Promise<Site> {
+    const env = await this.request<{ site: Site }>('DELETE', `/api/v2/sites/${encodeURIComponent(siteId)}`, {
+      query: { expectedAccessRevision },
+    });
     return (env.data as { site: Site }).site;
   }
 
-  async extendSite(siteId: string): Promise<Site> {
-    const env = await this.request<{ site: Site }>('POST', `/api/v2/sites/${encodeURIComponent(siteId)}/extend`);
+  async extendSite(siteId: string, expectedAccessRevision?: number): Promise<Site> {
+    const env = await this.request<{ site: Site }>('POST', `/api/v2/sites/${encodeURIComponent(siteId)}/extend`, {
+      query: { expectedAccessRevision },
+    });
     return (env.data as { site: Site }).site;
   }
 

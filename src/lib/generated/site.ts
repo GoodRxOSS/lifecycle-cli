@@ -5,12 +5,28 @@
  * API documentation for lifecycle
  * OpenAPI spec version: 2.0.0
  */
+import type { SiteVisibility } from './siteVisibility.js';
+import type { SiteCurrentRole } from './siteCurrentRole.js';
+import type { SitePermissions } from './sitePermissions.js';
 import type { SiteStatus } from './siteStatus.js';
 
 export interface Site {
   id: string;
   name: string;
   url: string;
+  visibility: SiteVisibility;
+  contentUrl: string;
+  openUrl: string;
+  /**
+   * Site mutation revision; advances on content replacement, visibility, expiry extension and deletion.
+   * @minimum 1
+   */
+  accessRevision: number;
+  /** @minimum 1 */
+  contentRevision: number;
+  /** @nullable */
+  currentRole: SiteCurrentRole;
+  permissions: SitePermissions;
   status: SiteStatus;
   /** @nullable */
   createdAt: string | null;

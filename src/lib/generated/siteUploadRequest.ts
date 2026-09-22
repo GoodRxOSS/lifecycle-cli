@@ -5,8 +5,21 @@
  * API documentation for lifecycle
  * OpenAPI spec version: 2.0.0
  */
+import type { SiteUploadRequestVisibility } from './siteUploadRequestVisibility.js';
 
 export interface SiteUploadRequest {
+  /** Creation only; omitted defaults private for users. Service-key creation always remains public. */
+  visibility?: SiteUploadRequestVisibility;
+  /**
+   * @minimum 1
+   * @maximum 2147483647
+   */
+  expectedAccessRevision?: number;
+  /**
+   * @minimum 1
+   * @maximum 2147483647
+   */
+  expectedContentRevision?: number;
   /** Static HTML file, supported asset file, or ZIP archive containing index.html. */
   file: Blob;
   /** Optional display name for the hosted site. */
