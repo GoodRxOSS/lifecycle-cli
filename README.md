@@ -161,12 +161,12 @@ Upload a ZIP, a single HTML file, or a directory (auto-zipped) and get a stable 
 
 User and personal-key uploads are private by default. Service-key uploads default to public for automation. An explicit unsupported visibility is rejected before upload. Only the owner can replace, extend, delete, or change visibility. Public sites allow anyone with the link to view them.
 
-Use `openUrl` for a stable opening link. Making a public site private retires its old content URL; saved copies cannot be recalled. Named-user sharing is not included in this version.
+Use `openUrl` for a stable opening link. Visibility changes keep the Site ID and content URL; saved copies cannot be recalled. Named-user sharing is not included in this version.
 
 ```bash
 lfc sites create ./report.html --name "perf report"
 # ✓ Created site a1b2c3d4e5 (perf report)
-# https://a1b2c3d4e5.sites.lifecycle.example.com
+# https://ui.lifecycle.example.com/sites/open/a1b2c3d4e5
 
 lfc sites create ./dist                  # whole directory
 lfc sites create ./dist --visibility public --yes

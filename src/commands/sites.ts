@@ -226,7 +226,7 @@ export function registerSitesCommands(program: Command): void {
     );
   sites
     .command('visibility <siteId> <visibility>')
-    .description('Publish a site or make it private (changes its content URL)')
+    .description('Publish a site or make it private (keeps its content URL)')
     .option('-y, --yes', 'skip the confirmation prompt')
     .action(
       runAction(async (ctx, siteId: string, value: string, opts: { yes?: boolean }) => {
