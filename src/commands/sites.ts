@@ -23,13 +23,19 @@ async function prepareUpload(ctx: Ctx, target: string, capabilities?: SitesCapab
   return prepareSiteUpload(target, capabilities ?? (await ctx.api.getSitesCapabilities()));
 }
 
-async function confirmVisibility(visibility: SiteVisibility, yes?: boolean): Promise<boolean> {
+async function confirmVisibility(
+  visibility: SiteVisibility,
+  yes?: boolean,
+  reason: 'explicit' | 'default' = 'explicit',
+): Promise<boolean> {
   if (yes) return true;
   if (!process.stdin.isTTY) throw new Error('Use --yes to confirm a visibility change in non-interactive mode');
   const ok = await clack.confirm({
     message:
       visibility === 'public'
-        ? 'Publish this site so anyone with the link can view it?'
+        ? reason === 'default'
+          ? 'This will be public by default for your credential — anyone with the link can view it. Continue?'
+          : 'Publish this site so anyone with the link can view it?'
         : 'Make this site private? Its URL stays the same, but saved copies cannot be recalled.',
   });
   if (ok !== true) {
@@ -124,7 +130,11 @@ export function registerSitesCommands(program: Command): void {
         if (!capabilities.enabled || !capabilities.canCreate)
           throw new Error('Creating Sites is unavailable for this credential.');
         validateSiteVisibility(opts.visibility, capabilities);
-        if (opts.visibility === 'public' && !(await confirmVisibility('public', opts.yes))) return;
+        const effectiveVisibility = opts.visibility ?? capabilities.defaultVisibility;
+        if (effectiveVisibility === 'public') {
+          const reason = opts.visibility === 'public' ? 'explicit' : 'default';
+          if (!(await confirmVisibility('public', opts.yes, reason))) return;
+        }
         const upload = await prepareUpload(ctx, target, capabilities);
         try {
           const form = await uploadForm(upload, opts.name, opts.visibility);
