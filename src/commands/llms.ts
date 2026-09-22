@@ -150,10 +150,12 @@ Schema validation (offline, no auth needed):
 
 Static sites:
 
-    lfc sites create <file-or-dir> [--name <label>]   # returns a stable URL
-    lfc sites list [--mine]
+    lfc sites create <file-or-dir> [--name <label>] [--visibility private|public]
+    # User uploads default to private. Add --visibility public --yes to publish.
+    lfc sites list [--mine | --public]
     lfc sites get <id>
     lfc sites update <id> <file-or-dir>
+    lfc sites visibility <id> <private|public> --yes  # keeps the content URL
     lfc sites extend <id>                              # push out the expiry
     lfc sites delete <id> --yes
 
@@ -193,7 +195,7 @@ Validate a lifecycle.yaml before pushing (guardrail):
 
 Publish a report or artifact for humans:
 
-    lfc sites create ./coverage --name "coverage report" --json | jq -r .url
+    lfc sites create ./coverage --name "coverage report" --visibility public --yes --json | jq -r .openUrl
 
 ## Troubleshooting a stuck user
 
