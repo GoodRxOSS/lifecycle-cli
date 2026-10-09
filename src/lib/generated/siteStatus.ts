@@ -14,4 +14,5 @@ export const SiteStatus = {
   active: 'active',
   deleted: 'deleted',
   expired: 'expired',
+  purged: 'purged',
 } as const;

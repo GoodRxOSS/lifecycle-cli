@@ -15,4 +15,9 @@ export interface SitesCapabilities {
   defaultVisibility: SitesCapabilitiesDefaultVisibility;
   allowedVisibilities: SitesCapabilitiesAllowedVisibilitiesItem[];
   upload: SitesCapabilitiesUpload;
+  /**
+   * Days a deleted site stays restorable before its content is purged.
+   * @minimum 0
+   */
+  deletedRetentionDays: number;
 }

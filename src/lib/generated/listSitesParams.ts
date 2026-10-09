@@ -8,6 +8,9 @@
 import type { ListSitesView } from './listSitesView.js';
 
 export type ListSitesParams = {
+/**
+ * deleted lists the caller's deleted sites that can still be restored.
+ */
 view?: ListSitesView;
 q?: string;
 /**

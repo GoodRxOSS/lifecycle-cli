@@ -34,6 +34,13 @@ export interface Site {
   updatedAt: string | null;
   /** @nullable */
   expiresAt: string | null;
+  /** @nullable */
+  deletedAt: string | null;
+  /**
+   * Last moment a deleted site can be restored; null unless the site is deleted.
+   * @nullable
+   */
+  restorableUntil: string | null;
   /** @minimum 0 */
   fileCount: number;
   /** @minimum 0 */

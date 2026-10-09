@@ -12,6 +12,7 @@ const capabilities: SitesCapabilities = {
   defaultVisibility: 'public',
   allowedVisibilities: ['public'],
   upload: { maxUploadBytes: 100, maxExtractedBytes: 100, maxFiles: 3, allowedExtensions: ['html'] },
+  deletedRetentionDays: 30,
 };
 afterEach(() => vi.unstubAllGlobals());
 function mockResponse(data: unknown) {
