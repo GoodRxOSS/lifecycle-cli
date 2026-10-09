@@ -11,4 +11,5 @@ export type SitePermissions = {
   canEdit: boolean;
   canDelete: boolean;
   canChangeVisibility: boolean;
+  canRestore: boolean;
 };

@@ -14,4 +14,5 @@ export const ListSitesView = {
   mine: 'mine',
   public: 'public',
   all: 'all',
+  deleted: 'deleted',
 } as const;

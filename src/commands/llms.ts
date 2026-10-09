@@ -152,12 +152,13 @@ Static sites:
 
     lfc sites create <file-or-dir> [--name <label>] [--visibility private|public]
     # User uploads default to private. Add --visibility public --yes to publish.
-    lfc sites list [--mine | --public]
+    lfc sites list [--mine | --public | --deleted]   # --deleted shows your restorable deleted sites
     lfc sites get <id>
     lfc sites update <id> <file-or-dir>
     lfc sites visibility <id> <private|public> --yes  # keeps the content URL
     lfc sites extend <id>                              # push out the expiry
-    lfc sites delete <id> --yes
+    lfc sites delete <id> --yes                        # recoverable until restorableUntil
+    lfc sites restore <id>                             # undo a delete; same id and URL
 
 ## Recipes for common agent tasks
 

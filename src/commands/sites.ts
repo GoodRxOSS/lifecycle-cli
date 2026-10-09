@@ -6,7 +6,7 @@ import pc from 'picocolors';
 
 import { runAction, type Ctx } from '../lib/context.js';
 import { formatAge, formatBytes, link, printJson, renderTable, statusColor } from '../lib/output.js';
-import { siteListView, validateSiteVisibility } from '../lib/sites.js';
+import { describeRetention, siteListView, validateSiteVisibility } from '../lib/sites.js';
 import type { Site, SitesCapabilities, SiteVisibility } from '../lib/types.js';
 import { prepareSiteUpload, type PreparedSiteUpload } from '../lib/zip.js';
 
@@ -17,6 +17,14 @@ async function uploadForm(upload: PreparedSiteUpload, name?: string, visibility?
   if (name) form.append('name', name);
   if (visibility) form.append('visibility', visibility);
   return form;
+}
+
+async function retentionDays(ctx: Ctx): Promise<number | undefined> {
+  try {
+    return (await ctx.api.getSitesCapabilities()).deletedRetentionDays;
+  } catch {
+    return undefined;
+  }
 }
 
 async function prepareUpload(ctx: Ctx, target: string, capabilities?: SitesCapabilities): Promise<PreparedSiteUpload> {
@@ -69,13 +77,20 @@ export function registerSitesCommands(program: Command): void {
     .command('list')
     .description('List hosted sites')
     .option('-m, --mine', 'only sites owned by this identity')
+    .option(
+      '--deleted',
+      'list your deleted sites that can still be restored (implies --mine; cannot be combined with --public)',
+    )
     .option('--public', 'only public sites')
     .option('--search <query>', 'search site name or id')
     .option('-p, --page <n>', 'page number', v => Number(v), 1)
     .option('-n, --limit <n>', 'items per page', v => Number(v), 25)
     .action(
       runAction(
-        async (ctx, opts: { mine?: boolean; public?: boolean; search?: string; page: number; limit: number }) => {
+        async (
+          ctx,
+          opts: { mine?: boolean; public?: boolean; deleted?: boolean; search?: string; page: number; limit: number },
+        ) => {
           const view = siteListView(opts);
           const { items, pagination } = await ctx.api.listSites({
             page: opts.page,
@@ -85,6 +100,22 @@ export function registerSitesCommands(program: Command): void {
           });
           if (ctx.json) {
             printJson({ sites: items, pagination });
+            return;
+          }
+          if (opts.deleted) {
+            const retention = describeRetention(await retentionDays(ctx));
+            if (items.length === 0) {
+              process.stdout.write(pc.dim(`No recently deleted sites. ${retention}\n`));
+              return;
+            }
+            const deletedRows = items.map(s => [
+              pc.bold(s.id),
+              s.name ?? '',
+              s.deletedAt ? formatAge(s.deletedAt) : '',
+              s.restorableUntil ? new Date(s.restorableUntil).toLocaleString() : '',
+            ]);
+            process.stdout.write(renderTable(['id', 'name', 'deleted', 'restorable until'], deletedRows) + '\n');
+            process.stdout.write(pc.dim(`${retention} Restore with: lfc sites restore <id>\n`));
             return;
           }
           if (items.length === 0) {
@@ -214,7 +245,7 @@ export function registerSitesCommands(program: Command): void {
 
   sites
     .command('delete <siteId>')
-    .description('Delete a hosted site')
+    .description('Delete a hosted site (recoverable with `lfc sites restore` until its restore deadline)')
     .option('-y, --yes', 'skip the confirmation prompt')
     .action(
       runAction(async (ctx, siteId: string, opts: { yes?: boolean }) => {
@@ -223,7 +254,16 @@ export function registerSitesCommands(program: Command): void {
           throw new Error('Your current access does not allow you to delete this site.');
         if (!opts.yes) {
           if (!process.stdin.isTTY) throw new Error('Refusing to delete without --yes in non-interactive mode');
-          const ok = await clack.confirm({ message: `Delete site ${siteId}? Its URL stops working immediately.` });
+          const days = await retentionDays(ctx);
+          const restoreNote =
+            days === undefined
+              ? ''
+              : days === 0
+                ? ' It is removed at the next cleanup.'
+                : ` You can restore it for ${days} ${days === 1 ? 'day' : 'days'}.`;
+          const ok = await clack.confirm({
+            message: `Delete site ${siteId}? Its URL stops working immediately.${restoreNote}`,
+          });
           if (ok !== true) {
             process.stderr.write('Aborted.\n');
             return;
@@ -231,9 +271,31 @@ export function registerSitesCommands(program: Command): void {
         }
         const site = await ctx.api.deleteSite(siteId, current.accessRevision);
         if (ctx.json) printJson(site);
-        else process.stderr.write(`${pc.green('✓')} Deleted site ${siteId}\n`);
+        else {
+          process.stderr.write(`${pc.green('✓')} Deleted site ${siteId}\n`);
+          if (site.restorableUntil)
+            process.stderr.write(
+              `  Restore it with ${pc.bold(`lfc sites restore ${siteId}`)} until ${new Date(site.restorableUntil).toLocaleString()}.\n`,
+            );
+        }
       }),
     );
+
+  sites
+    .command('restore <siteId>')
+    .description('Restore a deleted site (same id and URL) while it is still restorable')
+    .action(
+      runAction(async (ctx, siteId: string) => {
+        // GET /sites/{id} returns 404 for deleted sites, so the revision comes from the deleted list.
+        const { items } = await ctx.api.listSites({ page: 1, limit: 100, view: 'deleted', q: siteId });
+        const current = items.find(s => s.id === siteId);
+        if (!current) throw new Error('Site not found or no longer restorable.');
+        if (!current.permissions.canRestore)
+          throw new Error('Your current access does not allow you to restore this site.');
+        printSite(ctx, await ctx.api.restoreSite(siteId, current.accessRevision), 'Restored');
+      }),
+    );
+
   sites
     .command('visibility <siteId> <visibility>')
     .description('Publish a site or make it private (keeps its content URL)')
