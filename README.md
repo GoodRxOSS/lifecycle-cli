@@ -159,7 +159,7 @@ Runs fully offline (no auth needed) except `--repo/--branch`. Exit codes: `0` va
 
 Upload a ZIP, a single HTML file, or a directory (auto-zipped) and get a stable URL back:
 
-User and personal-key uploads are private by default. Service-key uploads default to public for automation. An explicit unsupported visibility is rejected before upload. Only the owner can replace, extend, delete, or change visibility. Public sites allow anyone with the link to view them.
+User and personal-key uploads are private by default. Service-key uploads default to public for automation. An explicit unsupported visibility is rejected before upload. Only the owner can replace, extend, delete, restore, or change visibility. Public sites allow anyone with the link to view them.
 
 Use `openUrl` for a stable opening link. Visibility changes keep the Site ID and content URL; saved copies cannot be recalled. Named-user sharing is not included in this version.
 
@@ -176,7 +176,9 @@ lfc sites get a1b2c3d4e5
 lfc sites update a1b2c3d4e5 ./dist       # replace content (new version)
 lfc sites visibility a1b2c3d4e5 private --yes
 lfc sites extend a1b2c3d4e5              # push out the TTL/expiry
-lfc sites delete a1b2c3d4e5 --yes
+lfc sites delete a1b2c3d4e5 --yes       # recoverable until its restore deadline
+lfc sites list --deleted                 # your deleted sites that can still be restored
+lfc sites restore a1b2c3d4e5             # same id and URL as before
 ```
 
 Directory uploads honor default ignores such as `.git`, `node_modules`, `.DS_Store`, `.next/cache`, `dist/.cache`, and `coverage`.

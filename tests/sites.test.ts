@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClient } from '../src/lib/api.js';
-import { siteListView, validateSiteVisibility } from '../src/lib/sites.js';
+import { describeRetention, siteListView, validateSiteVisibility } from '../src/lib/sites.js';
 import type { SitesCapabilities } from '../src/lib/types.js';
 
 vi.mock('../src/lib/auth.js', () => ({ getAccessToken: vi.fn(async () => 'lfc_test_personal_key') }));
@@ -75,5 +75,27 @@ describe('Sites V1 contracts', () => {
     await client.extendSite('test', 9);
     expect((fetchMock.mock.calls[0]![0] as unknown as URL).searchParams.get('expectedAccessRevision')).toBe('8');
     expect((fetchMock.mock.calls[1]![0] as unknown as URL).searchParams.get('expectedAccessRevision')).toBe('9');
+  });
+  it('sends the revision on restore', async () => {
+    const fetchMock = mockResponse({ site: { id: 'test' } });
+    await client.restoreSite('test/id', 3);
+    const url = fetchMock.mock.calls[0]![0] as unknown as URL;
+    expect(url.pathname).toBe('/api/v2/sites/test%2Fid/restore');
+    expect(url.searchParams.get('expectedAccessRevision')).toBe('3');
+    expect((fetchMock.mock.calls[0]![1] as RequestInit).method).toBe('POST');
+  });
+  it('maps --deleted to the deleted view', () => {
+    expect(siteListView({ deleted: true })).toBe('deleted');
+    expect(siteListView({ deleted: true, mine: true })).toBe('deleted');
+    expect(() => siteListView({ deleted: true, public: true })).toThrow('cannot be combined');
+  });
+});
+
+describe('describeRetention', () => {
+  it('describes the configured retention window', () => {
+    expect(describeRetention(30)).toBe('Deleted sites are kept for 30 days, then permanently removed.');
+    expect(describeRetention(1)).toContain('kept for 1 day,');
+    expect(describeRetention(0)).toContain('at the next cleanup');
+    expect(describeRetention(undefined)).toContain("until they're permanently removed");
   });
 });

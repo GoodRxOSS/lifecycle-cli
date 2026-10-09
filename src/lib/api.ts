@@ -294,6 +294,13 @@ export class ApiClient {
     return (env.data as { site: Site }).site;
   }
 
+  async restoreSite(siteId: string, expectedAccessRevision?: number): Promise<Site> {
+    const env = await this.request<{ site: Site }>('POST', `/api/v2/sites/${encodeURIComponent(siteId)}/restore`, {
+      query: { expectedAccessRevision },
+    });
+    return (env.data as { site: Site }).site;
+  }
+
   async extendSite(siteId: string, expectedAccessRevision?: number): Promise<Site> {
     const env = await this.request<{ site: Site }>('POST', `/api/v2/sites/${encodeURIComponent(siteId)}/extend`, {
       query: { expectedAccessRevision },
