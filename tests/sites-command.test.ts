@@ -15,6 +15,7 @@ const api = vi.hoisted(() => ({
   listSites: vi.fn(),
   deleteSite: vi.fn(),
   restoreSite: vi.fn(),
+  renameSite: vi.fn(),
 }));
 const ctxState = vi.hoisted(() => ({ json: true }));
 const prompts = vi.hoisted(() => ({ confirm: vi.fn() }));
@@ -243,5 +244,26 @@ describe('restore, delete and list --deleted', () => {
     const written = stderr.mock.calls.map(c => String(c[0])).join('');
     expect(written).toContain('lfc sites restore owned');
     expect(written).not.toMatch(/permanent/i);
+  });
+});
+
+describe('rename', () => {
+  it('renames using the current access revision', async () => {
+    api.getSite.mockResolvedValue({ id: 'owned', accessRevision: 7, permissions: { canEdit: true } });
+    api.renameSite.mockResolvedValue({ id: 'owned', name: 'New name' });
+    const command = new Command();
+    registerSitesCommands(command);
+    await command.parseAsync(['sites', 'rename', 'owned', 'New name'], { from: 'user' });
+    expect(api.renameSite).toHaveBeenCalledWith('owned', 'New name', 7);
+  });
+
+  it('does not rename when the current permission denies editing', async () => {
+    api.getSite.mockResolvedValue({ id: 'owned', accessRevision: 7, permissions: { canEdit: false } });
+    const command = new Command();
+    registerSitesCommands(command);
+    await expect(command.parseAsync(['sites', 'rename', 'owned', 'New name'], { from: 'user' })).rejects.toThrow(
+      'current access',
+    );
+    expect(api.renameSite).not.toHaveBeenCalled();
   });
 });
