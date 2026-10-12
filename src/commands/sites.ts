@@ -230,7 +230,9 @@ export function registerSitesCommands(program: Command): void {
     .command('rename <siteId> <name>')
     .description('Rename a site (its id and URL stay the same)')
     .action(
-      runAction(async (ctx, siteId: string, name: string) => {
+      runAction(async (ctx, siteId: string, rawName: string) => {
+        const name = rawName.trim();
+        if (!name || name.length > 255) throw new Error('The name must be 1-255 characters.');
         const current = await ctx.api.getSite(siteId);
         if (!current.permissions.canEdit)
           throw new Error('Your current access does not allow you to rename this site.');
