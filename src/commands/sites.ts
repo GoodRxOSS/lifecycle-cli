@@ -233,6 +233,8 @@ export function registerSitesCommands(program: Command): void {
       runAction(async (ctx, siteId: string, rawName: string) => {
         const name = rawName.trim();
         if (!name || name.length > 255) throw new Error('The name must be 1-255 characters.');
+        if (/[\p{Cc}\u202A-\u202E\u2066-\u2069]/u.test(name))
+          throw new Error('The name cannot contain control or text-direction characters.');
         const current = await ctx.api.getSite(siteId);
         if (!current.permissions.canEdit)
           throw new Error('Your current access does not allow you to rename this site.');
