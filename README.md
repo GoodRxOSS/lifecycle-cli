@@ -175,6 +175,7 @@ lfc sites list --public --search report
 lfc sites get a1b2c3d4e5
 lfc sites update a1b2c3d4e5 ./dist       # replace content (new version)
 lfc sites visibility a1b2c3d4e5 private --yes
+lfc sites rename a1b2c3d4e5 "Q3 report"   # change the display name; id and URL stay the same
 lfc sites extend a1b2c3d4e5              # push out the TTL/expiry
 lfc sites delete a1b2c3d4e5 --yes       # recoverable until its restore deadline
 lfc sites list --deleted                 # your deleted sites that can still be restored

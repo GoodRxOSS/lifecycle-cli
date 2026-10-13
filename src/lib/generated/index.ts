@@ -703,6 +703,7 @@ export * from './removeRepositoryParams.js';
 export * from './removeRepositoryResponse.js';
 export * from './removeRepositorySuccessResponse.js';
 export * from './removeRepositorySuccessResponseAllOf.js';
+export * from './renameSiteBody.js';
 export * from './repository.js';
 export * from './repositorySearchResult.js';
 export * from './respondToAgentPendingAction200.js';

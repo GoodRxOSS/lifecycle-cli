@@ -76,6 +76,15 @@ describe('Sites V1 contracts', () => {
     expect((fetchMock.mock.calls[0]![0] as unknown as URL).searchParams.get('expectedAccessRevision')).toBe('8');
     expect((fetchMock.mock.calls[1]![0] as unknown as URL).searchParams.get('expectedAccessRevision')).toBe('9');
   });
+  it('patches the name and revision on rename', async () => {
+    const fetchMock = mockResponse({ site: { id: 'test' } });
+    await client.renameSite('test/id', 'New name', 5);
+    const url = fetchMock.mock.calls[0]![0] as unknown as URL;
+    const init = fetchMock.mock.calls[0]![1] as RequestInit;
+    expect(url.pathname).toBe('/api/v2/sites/test%2Fid');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body as string)).toEqual({ name: 'New name', expectedAccessRevision: 5 });
+  });
   it('sends the revision on restore', async () => {
     const fetchMock = mockResponse({ site: { id: 'test' } });
     await client.restoreSite('test/id', 3);

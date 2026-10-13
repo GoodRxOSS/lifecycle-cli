@@ -1,6 +1,6 @@
 import { getAccessToken } from './auth.js';
 import type { Profile } from './config.js';
-import type { ListSitesParams } from './generated/index.js';
+import type { ListSitesParams, RenameSiteBody } from './generated/index.js';
 import { matchBuilds, type Selector } from './resolve.js';
 import type {
   ApiEnvelope,
@@ -284,6 +284,14 @@ export class ApiClient {
 
   async getSite(siteId: string): Promise<Site> {
     const env = await this.request<{ site: Site }>('GET', `/api/v2/sites/${encodeURIComponent(siteId)}`);
+    return (env.data as { site: Site }).site;
+  }
+
+  async renameSite(siteId: string, name: string, expectedAccessRevision?: number): Promise<Site> {
+    const body: RenameSiteBody = { name, expectedAccessRevision };
+    const env = await this.request<{ site: Site }>('PATCH', `/api/v2/sites/${encodeURIComponent(siteId)}`, {
+      json: body,
+    });
     return (env.data as { site: Site }).site;
   }
 

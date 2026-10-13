@@ -156,6 +156,7 @@ Static sites:
     lfc sites get <id>
     lfc sites update <id> <file-or-dir>
     lfc sites visibility <id> <private|public> --yes  # keeps the content URL
+    lfc sites rename <id> <name>                       # display name only; id and URL stay the same
     lfc sites extend <id>                              # push out the expiry
     lfc sites delete <id> --yes                        # recoverable until restorableUntil
     lfc sites restore <id>                             # undo a delete; same id and URL

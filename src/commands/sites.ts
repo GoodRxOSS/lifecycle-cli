@@ -227,6 +227,24 @@ export function registerSitesCommands(program: Command): void {
     );
 
   sites
+    .command('rename <siteId> <name>')
+    .description('Rename a site (its id and URL stay the same)')
+    .action(
+      runAction(async (ctx, siteId: string, rawName: string) => {
+        const name = rawName.trim();
+        if (!name || name.length > 255) throw new Error('The name must be 1-255 characters.');
+        if (/[\p{Cc}\u202A-\u202E\u2066-\u2069]/u.test(name))
+          throw new Error('The name cannot contain control or text-direction characters.');
+        const current = await ctx.api.getSite(siteId);
+        if (!current.permissions.canEdit)
+          throw new Error('Your current access does not allow you to rename this site.');
+        const site = await ctx.api.renameSite(siteId, name, current.accessRevision);
+        if (ctx.json) printJson(site);
+        else process.stderr.write(`${pc.green('✓')} Renamed ${pc.bold(site.id)} to ${pc.bold(site.name ?? name)}\n`);
+      }),
+    );
+
+  sites
     .command('extend <siteId>')
     .description("Extend a site's expiration (TTL)")
     .action(
