@@ -11,8 +11,13 @@ if (!apiUrl) {
 
 export default defineConfig({
   client: {
-    input: `${apiUrl.replace(/\/$/, '')}/api/docs`,
+    input: {
+      target: `${apiUrl.replace(/\/$/, '')}/api/docs`,
+      unsafeDisableValidation: true,
+    },
     output: {
+      // Orval 8 requires a target; only the schemas are kept, so the client is written to a cache dir.
+      target: './node_modules/.cache/orval/client.ts',
       schemas: './src/lib/generated',
     },
   },
