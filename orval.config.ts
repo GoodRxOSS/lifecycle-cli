@@ -1,3 +1,6 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import * as dotenv from 'dotenv';
 import { defineConfig } from 'orval';
 
@@ -11,8 +14,13 @@ if (!apiUrl) {
 
 export default defineConfig({
   client: {
-    input: `${apiUrl.replace(/\/$/, '')}/api/docs`,
+    input: {
+      target: `${apiUrl.replace(/\/$/, '')}/api/docs`,
+      unsafeDisableValidation: true,
+    },
     output: {
+      // Orval 8 requires a target; the generated client is discarded.
+      target: join(tmpdir(), 'orval-lifecycle', 'client.ts'),
       schemas: './src/lib/generated',
     },
   },
