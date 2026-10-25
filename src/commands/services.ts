@@ -215,11 +215,12 @@ async function printJobLogs(
   const containerName = containers.length > 0 ? containers[containers.length - 1]!.name : 'main';
   const tailLines = Number.parseInt(opts.tail, 10);
   if (Number.isNaN(tailLines) || tailLines < 0) throw new Error(`Invalid --tail value "${opts.tail}"`);
+  const { ticket } = await ctx.api.createLogStreamTicket(buildUuid, info.podName, containerName);
   await streamPodLogs(
     ctx.api.baseUrl,
     {
+      ticket,
       podName: info.podName,
-      namespace: info.websocket.parameters.namespace,
       containerName,
       follow: opts.follow && info.websocket.parameters.follow,
       tailLines,

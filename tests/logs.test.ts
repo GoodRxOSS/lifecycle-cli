@@ -4,11 +4,11 @@ import { logStreamWsUrl, parseWsLogMessage } from '../src/lib/logs.js';
 import { formatDuration } from '../src/lib/output.js';
 
 describe('logStreamWsUrl', () => {
-  it('builds a wss URL on the app host with all parameters', () => {
+  it('builds a wss URL on the app host carrying the ticket and the stream options', () => {
     const url = new URL(
       logStreamWsUrl('https://app.lifecycle.example.com', {
+        ticket: 'lfclt_v1.ticket',
         podName: 'web-abc',
-        namespace: 'env-foo-123',
         containerName: 'web',
         follow: true,
         tailLines: 200,
@@ -17,19 +17,34 @@ describe('logStreamWsUrl', () => {
     );
     expect(url.protocol).toBe('wss:');
     expect(url.pathname).toBe('/api/logs/stream');
-    expect(url.searchParams.get('podName')).toBe('web-abc');
-    expect(url.searchParams.get('namespace')).toBe('env-foo-123');
-    expect(url.searchParams.get('containerName')).toBe('web');
-    expect(url.searchParams.get('follow')).toBe('true');
-    expect(url.searchParams.get('tailLines')).toBe('200');
-    expect(url.searchParams.get('timestamps')).toBe('false');
+    expect(url.search).toContain('ticket=');
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      ticket: 'lfclt_v1.ticket',
+      follow: 'true',
+      tailLines: '200',
+      timestamps: 'false',
+    });
+  });
+
+  it('sends no namespace or pod coordinates alongside the ticket', () => {
+    const url = new URL(
+      logStreamWsUrl('https://app.lifecycle.example.com', {
+        ticket: 'lfclt_v1.ticket',
+        podName: 'web-abc',
+        containerName: 'web',
+        follow: false,
+      }),
+    );
+    expect(url.search).not.toContain('namespace=');
+    expect(url.searchParams.has('podName')).toBe(false);
+    expect(url.searchParams.has('containerName')).toBe(false);
   });
 
   it('uses ws: for http deployments and omits tailLines when unset', () => {
     const url = new URL(
       logStreamWsUrl('http://localhost:3000', {
+        ticket: 't',
         podName: 'p',
-        namespace: 'n',
         containerName: 'c',
         follow: false,
       }),

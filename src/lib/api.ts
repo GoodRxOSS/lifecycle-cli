@@ -1,6 +1,8 @@
+import pkg from '../../package.json' with { type: 'json' };
+
 import { getAccessToken } from './auth.js';
 import type { Profile } from './config.js';
-import type { ListSitesParams, RenameSiteBody } from './generated/index.js';
+import type { CreateLogStreamTicketBody, ListSitesParams, RenameSiteBody } from './generated/index.js';
 import { matchBuilds, type Selector } from './resolve.js';
 import type {
   ApiEnvelope,
@@ -9,6 +11,7 @@ import type {
   BuildListItem,
   DeployJobInfo,
   LogStreamInfo,
+  LogStreamTicket,
   PaginationMetadata,
   PodInfo,
   ServiceOverrideState,
@@ -28,6 +31,13 @@ export class ApiError extends Error {
     super(message);
   }
 }
+
+const LOG_STREAM_TICKET_MESSAGES: Record<string, string> = {
+  forbidden_scope: "You do not have access to this environment's logs.",
+  forbidden_repository: "You do not have access to this environment's logs.",
+  log_stream_pod_not_found: 'That pod is no longer running.',
+  log_stream_container_not_found: 'That container is no longer on the pod.',
+};
 
 export interface ListResult<T> {
   items: T[];
@@ -62,7 +72,7 @@ export class ApiClient {
       if (v !== undefined) url.searchParams.set(k, String(v));
     }
 
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { 'User-Agent': `lifecycle-cli/${pkg.version}` };
     const token = await getAccessToken(this.profileName, this.profile, { forceRefresh: retried });
     if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -235,6 +245,28 @@ export class ApiClient {
       `/api/v2/builds/${encodeURIComponent(uuid)}/services/${encodeURIComponent(service)}/${segment}/${encodeURIComponent(jobName)}`,
     );
     return env.data as LogStreamInfo;
+  }
+
+  async createLogStreamTicket(buildUuid: string, podName: string, containerName: string): Promise<LogStreamTicket> {
+    const body: CreateLogStreamTicketBody = { buildUuid, podName, containerName };
+    let env: ApiEnvelope<LogStreamTicket>;
+    try {
+      env = await this.request<LogStreamTicket>('POST', '/api/v2/logs/stream-tickets', { json: body });
+    } catch (err) {
+      if (!(err instanceof ApiError)) throw err;
+      const message = err.code ? LOG_STREAM_TICKET_MESSAGES[err.code] : undefined;
+      if (!err.code && (err.status === 404 || err.status === 405)) {
+        throw new ApiError(
+          'The API log ticket endpoint is unavailable. Ask the administrator to check API routing and install an API version that supports log tickets.',
+          err.status,
+          err.requestId,
+          'log_stream_api_incompatible',
+        );
+      }
+      throw message ? new ApiError(message, err.status, err.requestId, err.code) : err;
+    }
+    if (!env.data?.ticket) throw new ApiError('Could not start the log stream.', 0, env.request_id);
+    return env.data;
   }
 
   async listWebhookInvocations(uuid: string): Promise<WebhookInvocation[]> {
