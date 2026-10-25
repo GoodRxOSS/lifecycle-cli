@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import pkg from '../package.json' with { type: 'json' };
 import { ApiClient } from '../src/lib/api.js';
 import { describeRetention, siteListView, validateSiteVisibility } from '../src/lib/sites.js';
 import type { SitesCapabilities } from '../src/lib/types.js';
@@ -32,7 +33,10 @@ describe('Sites V1 contracts', () => {
     expect(await client.getSitesCapabilities()).toEqual(capabilities);
     const [url, options] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
     expect(url.pathname).toBe('/api/v2/sites/capabilities');
-    expect(options.headers).toEqual({ Authorization: 'Bearer lfc_test_personal_key' });
+    expect(options.headers).toEqual({
+      Authorization: 'Bearer lfc_test_personal_key',
+      'User-Agent': `lifecycle-cli/${pkg.version}`,
+    });
   });
   it('maps mine to server identity instead of requiring email', async () => {
     const fetchMock = mockResponse({ sites: [] });

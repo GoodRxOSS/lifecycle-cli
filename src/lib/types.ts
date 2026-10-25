@@ -1,4 +1,5 @@
 import type {
+  CreateLogStreamTicket200AllOfData,
   DeploymentJobInfo,
   DeploymentPodContainerInfo,
   EnvironmentPodInfo,
@@ -144,6 +145,8 @@ export type DeployJobInfo = Omit<DeploymentJobInfo, 'status' | 'deploymentType' 
 };
 
 export type LogStreamInfo = Omit<LogStreamResponse, 'podName'> & { podName?: string | null };
+
+export type LogStreamTicket = CreateLogStreamTicket200AllOfData;
 
 export const BUILD_TERMINAL_SUCCESS = new Set(['deployed']);
 export const BUILD_TERMINAL_FAILURE = new Set(['error', 'config_error', 'torn_down']);
