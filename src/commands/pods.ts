@@ -117,19 +117,18 @@ export function registerPodsCommands(program: Command): void {
           podName: string | undefined,
           opts: { service?: string; container?: string; follow: boolean; tail: string; timestamps: boolean },
         ) => {
-          const build = await ctx.api.getBuild(buildUuid);
-          const namespace = build.namespace || `env-${buildUuid}`;
           const list = await fetchPods(ctx, buildUuid, opts.service);
           if (list.length === 0) throw new Error('No pods found for this build');
           const pod = await pickPod(list, podName);
           const container = await pickContainer(pod, opts.container);
           const tailLines = Number.parseInt(opts.tail, 10);
           if (Number.isNaN(tailLines) || tailLines < 0) throw new Error(`Invalid --tail value "${opts.tail}"`);
+          const { ticket } = await ctx.api.createLogStreamTicket(buildUuid, pod.podName, container);
           await streamPodLogs(
             ctx.api.baseUrl,
             {
+              ticket,
               podName: pod.podName,
-              namespace,
               containerName: container,
               follow: opts.follow,
               tailLines,

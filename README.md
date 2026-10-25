@@ -135,7 +135,9 @@ lfc pods logs <build-uuid>                     # interactive pod/container picke
 lfc pods logs <build-uuid> <pod-name> -f --tail 500 --timestamps
 ```
 
-Log streaming uses the deployment's websocket endpoint (`/api/logs/stream`); `Ctrl-C` stops cleanly. In scripts, pass the pod name explicitly — the picker only appears on a TTY.
+Version 0.8.0 requires an API that provides `POST /api/v2/logs/stream-tickets` for live logs. The CLI obtains a ticket before opening `/api/logs/stream`. It does not fall back to anonymous log access. Archived logs use their existing API routes.
+
+Install this CLI after the matching API release. If a deployment disconnects a live stream, run the command again to obtain a fresh ticket. `Ctrl-C` stops the stream. In scripts, pass the pod name explicitly. The picker only appears on a TTY.
 
 ## Schema validation
 

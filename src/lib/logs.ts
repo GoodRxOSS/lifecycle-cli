@@ -1,8 +1,8 @@
 import pc from 'picocolors';
 
 export interface LogStreamParams {
+  ticket: string;
   podName: string;
-  namespace: string;
   containerName: string;
   follow: boolean;
   tailLines?: number;
@@ -13,9 +13,7 @@ export function logStreamWsUrl(apiBaseUrl: string, params: LogStreamParams): str
   const url = new URL(apiBaseUrl);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   url.pathname = '/api/logs/stream';
-  url.searchParams.set('podName', params.podName);
-  url.searchParams.set('namespace', params.namespace);
-  url.searchParams.set('containerName', params.containerName);
+  url.searchParams.set('ticket', params.ticket);
   url.searchParams.set('follow', String(params.follow));
   if (params.tailLines !== undefined) url.searchParams.set('tailLines', String(params.tailLines));
   url.searchParams.set('timestamps', String(params.timestamps ?? false));
