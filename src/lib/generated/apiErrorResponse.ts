@@ -9,7 +9,7 @@ import type { ApiError } from './apiError.js';
 
 export interface ApiErrorResponse {
   request_id: string;
-  /** @nullable */
-  data: null;
+  /** Always null on error responses. */
+  data: unknown;
   error: ApiError;
 }

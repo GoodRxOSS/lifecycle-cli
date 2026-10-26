@@ -14,10 +14,7 @@ if (!apiUrl) {
 
 export default defineConfig({
   client: {
-    input: {
-      target: `${apiUrl.replace(/\/$/, '')}/api/docs`,
-      unsafeDisableValidation: true,
-    },
+    input: `${apiUrl.replace(/\/$/, '')}/api/docs`,
     output: {
       // Orval 8 requires a target; the generated client is discarded.
       target: join(tmpdir(), 'orval-lifecycle', 'client.ts'),

@@ -10,9 +10,6 @@ import type { ResponseMetadata } from './responseMetadata.js';
 export interface SuccessApiResponse {
   request_id: string;
   metadata?: ResponseMetadata;
-  /**
-     * Always null on successful responses.
-     * @nullable
-     */
-  error: null;
+  /** Always null on successful responses. */
+  error: unknown;
 }
