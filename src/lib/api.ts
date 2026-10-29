@@ -243,7 +243,7 @@ export class ApiClient {
   }
 
   async invokeWebhooks(uuid: string): Promise<unknown> {
-    const env = await this.request<unknown>('POST', `/api/v2/builds/${encodeURIComponent(uuid)}/webhooks`);
+    const env = await this.request<unknown>('PUT', `/api/v2/builds/${encodeURIComponent(uuid)}/webhooks`);
     return env.data;
   }
 
