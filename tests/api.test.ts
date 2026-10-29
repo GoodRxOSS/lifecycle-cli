@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClient, type ListResult } from '../src/lib/api.js';
 import type { Profile } from '../src/lib/config.js';
@@ -94,5 +94,34 @@ describe('ApiClient.resolveBuild', () => {
     );
     expect(matches).toEqual([]);
     expect(truncated).toBe(false);
+  });
+});
+
+describe('ApiClient webhooks', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubFetch(data: unknown) {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ request_id: 'r', data, error: null })));
+    vi.stubGlobal('fetch', fetchMock);
+    return () => fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+  }
+
+  it('lists invocations with GET', async () => {
+    const firstCall = stubFetch([]);
+    await new ApiClient('test', PROFILE).listWebhookInvocations('a-b-1');
+    const [url, init] = firstCall();
+    expect(url.toString()).toBe('http://example.test/api/v2/builds/a-b-1/webhooks');
+    expect(init.method).toBe('GET');
+  });
+
+  it('invokes with PUT, since the route exports no POST handler', async () => {
+    const firstCall = stubFetch({ status: 'success' });
+    const result = await new ApiClient('test', PROFILE).invokeWebhooks('a-b-1');
+    const [url, init] = firstCall();
+    expect(url.toString()).toBe('http://example.test/api/v2/builds/a-b-1/webhooks');
+    expect(init.method).toBe('PUT');
+    expect(result).toEqual({ status: 'success' });
   });
 });
