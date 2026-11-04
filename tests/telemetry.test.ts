@@ -255,18 +255,24 @@ describe('reportInvocation', () => {
 });
 
 describe('runAction telemetry outcome', () => {
-  async function runWrapped(handler: (ctx: Ctx) => Promise<void>) {
+  async function runWrapped(handler: (ctx: Ctx) => Promise<void>, response?: Response) {
     saveConfig({
       currentProfile: 'default',
       profiles: { default: { apiUrl: 'https://lifecycle.example.com', authEnabled: false } },
     });
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 201 }));
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async (url: URL | string) =>
+        response && String(url).includes('/api/v2/builds') ? response : new Response('{}', { status: 201 }),
+      );
     vi.stubGlobal('fetch', fetchMock);
     process.exitCode = 0;
     const program = new Command().name('lfc').option('--json').option('--profile <name>');
     program.command('demo').action(runAction(handler));
     await program.parseAsync(['demo'], { from: 'user' });
-    return fetchMock.mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    return fetchMock.mock.calls
+      .filter(([, init]) => (init as RequestInit).body)
+      .map(([, init]) => JSON.parse((init as RequestInit).body as string));
   }
 
   it('reports error when a command sets process.exitCode without throwing', async () => {
@@ -277,6 +283,22 @@ describe('runAction telemetry outcome', () => {
       });
       expect(body).toMatchObject({ status: 'error', exitCode: 2 });
       expect(body.errorClass).toBeNull();
+    } finally {
+      process.exitCode = prev;
+    }
+  });
+
+  it('exits 4 when the API rejects LFC_API_KEY', async () => {
+    const prev = process.exitCode;
+    process.env.LFC_API_KEY = `lfc_svc_${'a'.repeat(40)}`;
+    try {
+      await runWrapped(
+        async ctx => {
+          await ctx.api.getBuild('abc');
+        },
+        new Response('{"error":{"message":"bad key"}}', { status: 401 }),
+      );
+      expect(process.exitCode).toBe(4);
     } finally {
       process.exitCode = prev;
     }

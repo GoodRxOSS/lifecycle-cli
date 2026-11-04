@@ -55,7 +55,10 @@ export function runAction<A extends unknown[]>(
       } else if (err instanceof ApiError) {
         const reqId = err.requestId ? pc.dim(` (request_id: ${err.requestId})`) : '';
         process.stderr.write(`${pc.red(`api error (${err.status}):`)} ${err.message}${reqId}\n`);
-        const exitCode = err.status === 404 ? 3 : 1;
+        const keyRejected = err.status === 401 && Boolean(process.env.LFC_API_KEY?.trim());
+        if (keyRejected)
+          process.stderr.write(`${pc.dim('LFC_API_KEY was rejected: it may be invalid, expired, or revoked.')}\n`);
+        const exitCode = keyRejected ? 4 : err.status === 404 ? 3 : 1;
         process.exitCode = exitCode;
         outcome = {
           status: 'error',

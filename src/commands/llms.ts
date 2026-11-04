@@ -40,9 +40,11 @@ and gets public URLs. The lfc CLI lets you:
    1 = failure (API error, failed build, invalid schema)
    2 = watch timeout (--watch did not converge in time)
    3 = not found (unknown uuid, no config file)
-   4 = authentication error (not logged in, expired session)
+   4 = authentication error (not logged in, expired session, rejected LFC_API_KEY)
 4. On exit code 4, run "lfc login" (or "lfc login --device" when there is no
    browser), then retry once. If it still fails, surface the error to the user.
+   When LFC_API_KEY is set, exit 4 means the key is missing, malformed, or
+   rejected: logging in will not help, so report it to the user instead.
 5. Destructive commands (builds destroy, sites delete) require --yes when stdin is
    not a TTY. Confirm with the user before tearing anything down.
 6. "lfc <command> --help" works on every command and subcommand and lists all flags.
@@ -79,7 +81,8 @@ profiles (one per deployment):
     lfc --profile <name> builds list     # one-off profile override
 
 Environment overrides: LFC_PROFILE (profile name), LIFECYCLE_API_URL (API base
-URL), LFC_JSON=1 (global JSON output), LFC_CONFIG_DIR (config location).
+URL), LFC_JSON=1 (global JSON output), LFC_CONFIG_DIR (config location),
+LFC_API_KEY (lfc_pat_/lfc_svc_ API key for CI; overrides any cached SSO login).
 
 ## Authentication
 
@@ -88,6 +91,7 @@ Deployments with SSO use Keycloak (Authorization Code + PKCE, or device code):
     lfc login              # opens a browser for SSO
     lfc login --device     # headless: prints a verification URL and a short code
     lfc whoami             # logged-in user, roles, token expiry — best first diagnostic
+                           # (with LFC_API_KEY set: the key's principal and scopes)
     lfc logout
 
 For --device (and "lfc init --device"), relay the printed URL and code to the user
