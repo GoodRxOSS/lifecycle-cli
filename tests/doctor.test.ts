@@ -21,11 +21,27 @@ beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lfc-doctor-'));
   process.env.LFC_CONFIG_DIR = dir;
   delete process.env.LFC_PROFILE;
+  delete process.env.LFC_API_KEY;
 });
 
 afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true });
   delete process.env.LFC_CONFIG_DIR;
+  delete process.env.LFC_API_KEY;
+});
+
+describe('runDoctor with LFC_API_KEY', () => {
+  it('accepts a well-formed key and flags a malformed one', () => {
+    saveConfig({
+      currentProfile: 'default',
+      profiles: { default: { apiUrl: 'https://lifecycle.example.com', authEnabled: false } },
+    });
+    process.env.LFC_API_KEY = `lfc_svc_${'a'.repeat(40)}`;
+    expect(runDoctor().checks.find(c => c.id === 'token_presence')?.status).toBe('ok');
+
+    process.env.LFC_API_KEY = 'Bearer lfc_oops';
+    expect(runDoctor().checks.find(c => c.id === 'token_presence')?.status).toBe('error');
+  });
 });
 
 describe('runDoctor', () => {

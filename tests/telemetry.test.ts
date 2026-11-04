@@ -21,12 +21,14 @@ beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lfc-telemetry-test-'));
   process.env.LFC_CONFIG_DIR = dir;
   delete process.env.LFC_TELEMETRY_DISABLED;
+  delete process.env.LFC_API_KEY;
 });
 
 afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true });
   delete process.env.LFC_CONFIG_DIR;
   delete process.env.LFC_TELEMETRY_DISABLED;
+  delete process.env.LFC_API_KEY;
   vi.unstubAllGlobals();
 });
 
@@ -209,6 +211,24 @@ describe('reportInvocation', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer cached-token');
+  });
+
+  it('prefers LFC_API_KEY over a cached SSO token', async () => {
+    const key = `lfc_svc_${'a'.repeat(40)}`;
+    process.env.LFC_API_KEY = key;
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+    saveTokens('default', { accessToken: 'cached-token', expiresAt: Date.now() + 60_000 });
+    const cmd = await parsedCommand(['builds', 'list']);
+    const ctx = fakeCtx({
+      authEnabled: true,
+      keycloak: { issuer: 'https://kc.example.com/realms/lifecycle', clientId: 'lifecycle-cli' },
+    });
+
+    await reportInvocation(ctx, cmd, 10, { status: 'success', exitCode: 0 });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${key}`);
   });
 
   it('skips silently when the only cached token is expired (never refreshes)', async () => {

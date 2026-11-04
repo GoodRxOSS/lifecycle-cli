@@ -66,6 +66,11 @@ export function registerAuthCommands(program: Command): void {
         const tokens = loadTokens(ctx.profileName);
         if (tokens && ctx.profile.keycloak) await endSession(ctx.profile.keycloak, tokens);
         const removed = clearTokens(ctx.profileName);
+        if (process.env.LFC_API_KEY?.trim()) {
+          process.stderr.write(
+            `${pc.yellow('!')} LFC_API_KEY is still set; commands will keep authenticating with it\n`,
+          );
+        }
         if (ctx.json) printJson({ loggedOut: removed, profile: ctx.profileName });
         else
           process.stderr.write(

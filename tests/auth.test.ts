@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { apiKeyFromEnv, AuthError, decodeJwt, getAccessToken, pkcePair } from '../src/lib/auth.js';
 
@@ -33,8 +33,18 @@ describe('LFC_API_KEY', () => {
   const key = `lfc_svc_${'a'.repeat(40)}`;
   const profile = { apiUrl: 'https://lfc.example', authEnabled: false } as const;
 
+  beforeEach(() => {
+    delete process.env.LFC_API_KEY;
+  });
+
   afterEach(() => {
     delete process.env.LFC_API_KEY;
+  });
+
+  it('takes precedence over cached SSO tokens', async () => {
+    process.env.LFC_API_KEY = key;
+    const sso = { ...profile, authEnabled: true, keycloak: { issuer: 'https://kc.example', clientId: 'cli' } };
+    await expect(getAccessToken('default', sso)).resolves.toBe(key);
   });
 
   it('is returned as the access token without a profile login', async () => {
