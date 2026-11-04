@@ -119,12 +119,12 @@ function permissionCheck(args: {
 
 function nodeVersionCheck(): DoctorCheck {
   const major = Number(process.versions.node.split('.')[0]);
-  const ok = major >= 20;
+  const ok = major >= 24;
   return {
     id: 'node_version',
     label: 'node',
     status: ok ? 'ok' : 'error',
-    message: ok ? `node ${process.version}` : `node ${process.version}; expected >=20`,
+    message: ok ? `node ${process.version}` : `node ${process.version}; expected >=24`,
   };
 }
 

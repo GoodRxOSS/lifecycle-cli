@@ -11,7 +11,7 @@ brave-falcon-7       building  acme/api#88               fix/timeout    jdoe    
 
 ## Installation
 
-Requires Node ≥ 20.
+Requires Node ≥ 24.
 
 ```bash
 npm install -g lfc-cli
