@@ -4,6 +4,7 @@ import type { Command } from 'commander';
 
 import pkg from '../../package.json' with { type: 'json' };
 
+import { apiKeyFromEnv } from './auth.js';
 import { loadConfig, loadTokens, saveConfig } from './config.js';
 import type { Ctx } from './context.js';
 import type { CreateTelemetryEventBody } from './generated/index.js';
@@ -84,7 +85,12 @@ export async function reportInvocation(
   // On auth-required deployments, only report when a valid token is already cached.
   // Refreshing here could hit Keycloak with no timeout, escaping the fetch bound below.
   let token: string | null = null;
-  if (ctx.profile.authEnabled) {
+  try {
+    token = apiKeyFromEnv();
+  } catch {
+    return;
+  }
+  if (!token && ctx.profile.authEnabled) {
     token = cachedAccessToken(ctx);
     if (!token) return;
   }

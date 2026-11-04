@@ -2,7 +2,7 @@ import * as clack from '@clack/prompts';
 import { Command } from 'commander';
 import pc from 'picocolors';
 
-import { AuthError, decodeJwt, endSession, loginDevice, loginPkce } from '../lib/auth.js';
+import { apiKeyFromEnv, AuthError, decodeJwt, endSession, loginDevice, loginPkce } from '../lib/auth.js';
 import { clearTokens, loadTokens, saveTokens } from '../lib/config.js';
 import { runAction, type Ctx } from '../lib/context.js';
 import { link, printJson } from '../lib/output.js';
@@ -66,6 +66,11 @@ export function registerAuthCommands(program: Command): void {
         const tokens = loadTokens(ctx.profileName);
         if (tokens && ctx.profile.keycloak) await endSession(ctx.profile.keycloak, tokens);
         const removed = clearTokens(ctx.profileName);
+        if (process.env.LFC_API_KEY?.trim()) {
+          process.stderr.write(
+            `${pc.yellow('!')} LFC_API_KEY is still set; commands will keep authenticating with it\n`,
+          );
+        }
         if (ctx.json) printJson({ loggedOut: removed, profile: ctx.profileName });
         else
           process.stderr.write(
@@ -79,6 +84,21 @@ export function registerAuthCommands(program: Command): void {
     .description('Show the logged-in user and token details')
     .action(
       runAction(async ctx => {
+        if (apiKeyFromEnv()) {
+          const info = { profile: ctx.profileName, apiUrl: ctx.api.baseUrl, ...(await ctx.api.getAuthContext()) };
+          if (ctx.json) printJson(info);
+          else
+            process.stdout.write(
+              [
+                `  principal   ${info.principal.kind} ${info.principal.id}`,
+                `  auth        ${info.authMethod} (LFC_API_KEY)`,
+                `  scopes      ${info.scopes?.join(', ') ?? 'unscoped'}`,
+                `  repos       ${info.repositories.mode === 'all' ? 'all' : info.repositories.repositoryNames.join(', ')}`,
+                `  api         ${info.apiUrl}`,
+              ].join('\n') + '\n',
+            );
+          return;
+        }
         if (!ctx.profile.authEnabled) {
           if (ctx.json) printJson({ authEnabled: false, profile: ctx.profileName, apiUrl: ctx.api.baseUrl });
           else process.stdout.write(`Auth is disabled for profile "${ctx.profileName}" (API: ${ctx.api.baseUrl})\n`);

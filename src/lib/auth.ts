@@ -7,6 +7,20 @@ import { loadTokens, saveTokens, type KeycloakSettings, type Profile, type Token
 
 export class AuthError extends Error {}
 
+const API_KEY_PATTERN = /^lfc_(pat_|svc_)?[a-f0-9]{40}$/;
+
+/** CI credential: LFC_API_KEY takes precedence over any cached SSO login and needs no profile or `lfc login`. */
+export function apiKeyFromEnv(): string | null {
+  const raw = process.env.LFC_API_KEY;
+  if (raw === undefined) return null;
+  const key = raw.trim();
+  if (!key) throw new AuthError('LFC_API_KEY is set but empty (is the CI secret missing?)');
+  if (!API_KEY_PATTERN.test(key)) {
+    throw new AuthError('LFC_API_KEY is not a valid Lifecycle API key (expected lfc_pat_… or lfc_svc_…)');
+  }
+  return key;
+}
+
 interface OidcDiscovery {
   authorization_endpoint: string;
   token_endpoint: string;
@@ -253,6 +267,8 @@ export async function getAccessToken(
   profile: Profile,
   { forceRefresh = false }: { forceRefresh?: boolean } = {},
 ): Promise<string | null> {
+  const apiKey = apiKeyFromEnv();
+  if (apiKey) return apiKey;
   if (!profile.authEnabled) return null;
   if (!profile.keycloak) throw new AuthError('Profile has authEnabled but no keycloak settings');
   const tokens = loadTokens(profileName);

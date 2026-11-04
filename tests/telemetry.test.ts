@@ -21,12 +21,14 @@ beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lfc-telemetry-test-'));
   process.env.LFC_CONFIG_DIR = dir;
   delete process.env.LFC_TELEMETRY_DISABLED;
+  delete process.env.LFC_API_KEY;
 });
 
 afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true });
   delete process.env.LFC_CONFIG_DIR;
   delete process.env.LFC_TELEMETRY_DISABLED;
+  delete process.env.LFC_API_KEY;
   vi.unstubAllGlobals();
 });
 
@@ -211,6 +213,24 @@ describe('reportInvocation', () => {
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer cached-token');
   });
 
+  it('prefers LFC_API_KEY over a cached SSO token', async () => {
+    const key = `lfc_svc_${'a'.repeat(40)}`;
+    process.env.LFC_API_KEY = key;
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+    saveTokens('default', { accessToken: 'cached-token', expiresAt: Date.now() + 60_000 });
+    const cmd = await parsedCommand(['builds', 'list']);
+    const ctx = fakeCtx({
+      authEnabled: true,
+      keycloak: { issuer: 'https://kc.example.com/realms/lifecycle', clientId: 'lifecycle-cli' },
+    });
+
+    await reportInvocation(ctx, cmd, 10, { status: 'success', exitCode: 0 });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${key}`);
+  });
+
   it('skips silently when the only cached token is expired (never refreshes)', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
@@ -235,18 +255,24 @@ describe('reportInvocation', () => {
 });
 
 describe('runAction telemetry outcome', () => {
-  async function runWrapped(handler: (ctx: Ctx) => Promise<void>) {
+  async function runWrapped(handler: (ctx: Ctx) => Promise<void>, response?: Response) {
     saveConfig({
       currentProfile: 'default',
       profiles: { default: { apiUrl: 'https://lifecycle.example.com', authEnabled: false } },
     });
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 201 }));
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async (url: URL | string) =>
+        response && String(url).includes('/api/v2/builds') ? response : new Response('{}', { status: 201 }),
+      );
     vi.stubGlobal('fetch', fetchMock);
     process.exitCode = 0;
     const program = new Command().name('lfc').option('--json').option('--profile <name>');
     program.command('demo').action(runAction(handler));
     await program.parseAsync(['demo'], { from: 'user' });
-    return fetchMock.mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    return fetchMock.mock.calls
+      .filter(([, init]) => (init as RequestInit).body)
+      .map(([, init]) => JSON.parse((init as RequestInit).body as string));
   }
 
   it('reports error when a command sets process.exitCode without throwing', async () => {
@@ -257,6 +283,22 @@ describe('runAction telemetry outcome', () => {
       });
       expect(body).toMatchObject({ status: 'error', exitCode: 2 });
       expect(body.errorClass).toBeNull();
+    } finally {
+      process.exitCode = prev;
+    }
+  });
+
+  it('exits 4 when the API rejects LFC_API_KEY', async () => {
+    const prev = process.exitCode;
+    process.env.LFC_API_KEY = `lfc_svc_${'a'.repeat(40)}`;
+    try {
+      await runWrapped(
+        async ctx => {
+          await ctx.api.getBuild('abc');
+        },
+        new Response('{"error":{"message":"bad key"}}', { status: 401 }),
+      );
+      expect(process.exitCode).toBe(4);
     } finally {
       process.exitCode = prev;
     }

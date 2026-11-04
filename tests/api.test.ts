@@ -125,3 +125,24 @@ describe('ApiClient webhooks', () => {
     expect(result).toEqual({ status: 'success' });
   });
 });
+
+describe('ApiClient with LFC_API_KEY', () => {
+  const key = `lfc_svc_${'a'.repeat(40)}`;
+
+  afterEach(() => {
+    delete process.env.LFC_API_KEY;
+    vi.unstubAllGlobals();
+  });
+
+  it('sends the key as a Bearer token and does not retry a 401', async () => {
+    process.env.LFC_API_KEY = key;
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{"error":{"message":"nope"}}', { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(new ApiClient('default', PROFILE).getBuild('abc')).rejects.toMatchObject({ status: 401 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${key}`);
+  });
+});

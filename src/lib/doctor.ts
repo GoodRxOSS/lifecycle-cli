@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { decodeJwt } from './auth.js';
+import { apiKeyFromEnv, decodeJwt } from './auth.js';
 import {
   configDir,
   configPath,
@@ -183,6 +183,21 @@ function configChecks(): DoctorCheck[] {
       status: 'ok',
       message: active.authEnabled ? `sso via ${active.keycloak!.issuer}` : 'disabled',
     });
+  }
+
+  if (process.env.LFC_API_KEY?.trim()) {
+    try {
+      apiKeyFromEnv();
+      checks.push({
+        id: 'token_presence',
+        label: 'token',
+        status: 'ok',
+        message: 'LFC_API_KEY is set; cached SSO tokens are ignored',
+      });
+    } catch (err) {
+      checks.push({ id: 'token_presence', label: 'token', status: 'error', message: (err as Error).message });
+    }
+    return checks;
   }
 
   if (active.authEnabled) {
