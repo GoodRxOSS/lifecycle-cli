@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { decodeJwt, pkcePair } from '../src/lib/auth.js';
+import { apiKeyFromEnv, AuthError, decodeJwt, getAccessToken, pkcePair } from '../src/lib/auth.js';
 
 describe('pkcePair', () => {
   it('generates an S256 challenge for the verifier', () => {
@@ -26,5 +26,31 @@ describe('decodeJwt', () => {
 
   it('throws on malformed tokens', () => {
     expect(() => decodeJwt('garbage')).toThrow();
+  });
+});
+
+describe('LFC_API_KEY', () => {
+  const key = `lfc_svc_${'a'.repeat(40)}`;
+  const profile = { apiUrl: 'https://lfc.example', authEnabled: false } as const;
+
+  afterEach(() => {
+    delete process.env.LFC_API_KEY;
+  });
+
+  it('is returned as the access token without a profile login', async () => {
+    process.env.LFC_API_KEY = ` ${key}\n`;
+    expect(apiKeyFromEnv()).toBe(key);
+    await expect(getAccessToken('nope', { ...profile })).resolves.toBe(key);
+  });
+
+  it('is absent when unset or blank', () => {
+    expect(apiKeyFromEnv()).toBeNull();
+    process.env.LFC_API_KEY = '  ';
+    expect(apiKeyFromEnv()).toBeNull();
+  });
+
+  it('rejects a malformed key', () => {
+    process.env.LFC_API_KEY = 'not-a-key';
+    expect(() => apiKeyFromEnv()).toThrow(AuthError);
   });
 });

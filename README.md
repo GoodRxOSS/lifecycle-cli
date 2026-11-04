@@ -70,6 +70,8 @@ lfc --profile local builds list         # one-off profile override
 
 Config lives at `~/.config/lifecycle-cli/config.json`. Environment overrides: `LFC_PROFILE`, `LIFECYCLE_API_URL`, `LFC_JSON=1`, `LFC_CONFIG_DIR`.
 
+For CI and other non-interactive use, create an API key in the Lifecycle UI (Settings → API keys) and export it as `LFC_API_KEY` (an `lfc_svc_…` or `lfc_pat_…` key). It takes precedence over any cached SSO login and needs no `lfc login` or config file when `LIFECYCLE_API_URL` is also set. The key's scopes apply: `lfc builds env set` needs `env:write`. `lfc whoami` reports the key's principal and scopes.
+
 The CLI reports anonymous usage telemetry to your own deployment's API (command and flag names, duration, and outcome — never arguments, values, error messages, or identity). Set `LFC_TELEMETRY_DISABLED=1` to turn it off.
 
 ## Builds (preview environments)

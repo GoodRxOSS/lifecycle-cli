@@ -185,6 +185,16 @@ function configChecks(): DoctorCheck[] {
     });
   }
 
+  if (process.env.LFC_API_KEY?.trim()) {
+    checks.push({
+      id: 'token_presence',
+      label: 'token',
+      status: 'ok',
+      message: 'LFC_API_KEY is set; it overrides cached SSO tokens',
+    });
+    return checks;
+  }
+
   if (active.authEnabled) {
     const tokens = loadTokens(config.currentProfile);
     if (!tokens) {

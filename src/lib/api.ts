@@ -1,4 +1,4 @@
-import { getAccessToken } from './auth.js';
+import { apiKeyFromEnv, getAccessToken } from './auth.js';
 import type { Profile } from './config.js';
 import type { ListSitesParams, RenameSiteBody } from './generated/index.js';
 import { matchBuilds, type Selector } from './resolve.js';
@@ -27,6 +27,14 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+export interface AuthContext {
+  principal: { kind: 'user' | 'personal_key' | 'service_key'; id: string };
+  authMethod: 'session' | 'api_key';
+  scopes: string[] | null;
+  repositories: { mode: 'all' | 'selected'; repositoryIds: number[]; repositoryNames: string[] };
+  tokenId: number | null;
 }
 
 export interface ListResult<T> {
@@ -77,7 +85,7 @@ export class ApiClient {
     const res = await fetch(url, { method, headers, body });
 
     // a 401 with a token that looked valid usually means clock skew or revocation — force one refresh
-    if (res.status === 401 && token && !retried) {
+    if (res.status === 401 && token && !retried && !apiKeyFromEnv()) {
       return this.request<T>(method, path, opts, true);
     }
 
@@ -150,6 +158,11 @@ export class ApiClient {
       if (page >= maxPages) return { matches, truncated: true };
     }
     return { matches, truncated: false };
+  }
+
+  async getAuthContext(): Promise<AuthContext> {
+    const env = await this.request<AuthContext>('GET', '/api/v2/auth/context');
+    return env.data as AuthContext;
   }
 
   async getBuild(uuid: string): Promise<Build> {
